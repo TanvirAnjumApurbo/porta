@@ -1,8 +1,12 @@
 "use client";
 
-import IntlTelInput from "intl-tel-input/reactWithUtils";
+import dynamic from "next/dynamic";
 import "intl-tel-input/styles";
 import { cn } from "@/lib/utils";
+
+const IntlTelInput = dynamic(() => import("intl-tel-input/reactWithUtils"), {
+  ssr: false,
+});
 
 interface PhoneInputProps {
   value?: string;
