@@ -3,6 +3,38 @@
 @theme {
   --font-sans: var(--font-inter);
   --font-mono: var(--font-roboto-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
 :root {
@@ -30,6 +62,16 @@
   --border: #374151;
   --input: #374151;
   --ring: #4f46e5;
+  
+  /* Shadcn Missing Variables */
+  --card: #111827; /* Dark gray */
+  --card-foreground: #ededed;
+  --popover: #111827;
+  --popover-foreground: #ededed;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+  --accent: #1f2937;
+  --accent-foreground: #ededed;
 
   /* Radius */
   --radius: 0.5rem;
@@ -65,4 +107,50 @@ body {
 
 @utility animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* intl-tel-input overrides for dark theme */
+.iti {
+  width: 100%;
+}
+
+.iti__dropdown-content {
+  z-index: 100 !important;
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem;
+}
+
+.iti__search-input {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--input) !important;
+}
+
+.iti__country-list {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+}
+
+.iti__country:hover,
+.iti__country--highlight {
+  background-color: var(--muted) !important;
+}
+
+.iti__selected-country {
+  background-color: transparent !important;
+}
+
+.iti__selected-country:hover,
+.iti__selected-country:focus {
+  background-color: var(--muted) !important;
+}
+
+.iti__arrow {
+  border-top-color: var(--foreground) !important;
+}
+
+.iti__arrow--up {
+  border-bottom-color: var(--foreground) !important;
 }

@@ -1,6 +1,36 @@
-export default function CreateRequestPage() {
+import { redirect } from "next/navigation";
+import { getVerificationStatus } from "@/server/actions/verification";
+import { auth } from "@clerk/nextjs/server";
+import { Navbar } from "@/components/navbar";
+
+export default async function CreateRequestPage() {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const userStatus = await getVerificationStatus();
+
+  if (!userStatus || !userStatus.isVerified) {
+    // Optionally redirect to a specific "verification needed" page, 
+    // but since we have a global modal/banner, redirecting to dashboard or home 
+    // where they can see the banner is a good start.
+    // Or we can render a "Verify First" state here.
+    return (
+        <main className="min-h-screen pt-24 px-6 bg-[var(--background)]">
+            <Navbar />
+            <div className="max-w-2xl mx-auto text-center mt-20">
+                <h1 className="text-3xl font-bold text-red-500 mb-4">Verification Required</h1>
+                <p className="text-zinc-400 mb-8">
+                    You must verify your identity before you can post a request.
+                    Please check the verification alert at the bottom of your screen to proceed.
+                </p>
+            </div>
+        </main>
+    );
+  }
+
   return (
     <main className="min-h-screen pt-24 px-6 bg-[var(--background)]">
+      <Navbar />
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Post a Request</h1>

@@ -9,7 +9,8 @@ const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)', 
   '/admin(.*)',
-  '/requests(.*)'
+  '/requests/new',  // Only protect create page, allow browsing
+  '/travel(.*)'
 ])
 
 export default clerkMiddleware(async (auth, req) => {
