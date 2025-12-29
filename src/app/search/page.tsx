@@ -4,25 +4,29 @@ export default function FindTravelersPage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       <Navbar />
-      <div className="pt-24 px-6 max-w-7xl mx-auto">
-        <div className="flex justify-between items-end mb-8">
+      <div className="pt-24 px-4 sm:px-6 max-w-7xl mx-auto pb-12">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Find Travelers</h1>
-            <p className="text-zinc-400">Connect with travelers flying to your destination.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Find Travelers</h1>
+            <p className="text-zinc-400 text-sm sm:text-base">Connect with travelers flying to your destination.</p>
           </div>
-          <div className="flex gap-4">
-             <input type="text" placeholder="Destination (e.g. Dhaka)" className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm" />
-             <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm transition-colors shadow-[0_0_15px_-3px_var(--primary)]">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full lg:w-auto">
+             <input 
+               type="text" 
+               placeholder="Destination (e.g. Dhaka)" 
+               className="flex-1 lg:flex-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm" 
+             />
+             <button className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg text-sm transition-colors shadow-[0_0_15px_-3px_var(--primary)]">
                Search
              </button>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="glass-card p-6 rounded-xl hover:border-primary/50 transition-colors cursor-pointer group">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30">
+            <div key={i} className="glass-card p-4 sm:p-6 rounded-xl hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-3 sm:gap-4 mb-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/30 text-sm">
                   JD
                 </div>
                 <div>

@@ -44,3 +44,58 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const travelPosts = pgTable("travel_posts", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id),
+  
+  // Trip Details
+  travelType: text("travel_type").notNull(), // DOMESTIC, INTERNATIONAL
+  transportMode: text("transport_mode").notNull(), // FLIGHT, OTHER
+  
+  // Flight Specific Details (Detailed Ticket Info)
+  airlineName: text("airline_name"),
+  flightNumber: text("flight_number"),
+  seatClass: text("seat_class"), // Economy, Business, First
+  departureTime: text("departure_time"), // Specific time HH:mm
+  arrivalTime: text("arrival_time"),
+  departureGate: text("departure_gate"),
+  arrivalGate: text("arrival_gate"),
+  departureTerminal: text("departure_terminal"),
+  arrivalTerminal: text("arrival_terminal"),
+  departureTimezone: text("departure_timezone"),
+  arrivalTimezone: text("arrival_timezone"),
+
+  // Location Details (Enhanced)
+  originAirport: text("origin_airport"),      // Full string: "LHR - London Heathrow"
+  destinationAirport: text("destination_airport"),
+  
+  departureStation: text("departure_station"), // For Train/Bus
+  destinationStation: text("destination_station"),
+  
+  departureState: text("departure_state"), // State/Province/District
+  destinationState: text("destination_state"),
+  
+  departureCity: text("departure_city").notNull(),
+  departureCountry: text("departure_country").notNull(),
+  destinationCity: text("destination_city").notNull(),
+  destinationCountry: text("destination_country").notNull(),
+  travelDate: date("travel_date").notNull(),
+  arrivalDate: date("arrival_date"),
+  
+  // Capacity
+  availableWeight: text("available_weight"), // e.g., "5kg"
+  availableSpace: text("available_space"),   // e.g., "Carry-on sized items"
+  
+  // Private ticket - stored but never shown publicly
+  ticketImageUrl: text("ticket_image_url").notNull(),
+  
+  // Additional info
+  notes: text("notes"),
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

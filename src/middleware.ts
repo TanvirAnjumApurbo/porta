@@ -10,7 +10,7 @@ const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)', 
   '/admin(.*)',
   '/requests/new',  // Only protect create page, allow browsing
-  '/travel(.*)'
+  '/travel'  // Only protect /travel (post trip), not /travelers (browse)
 ])
 
 export default clerkMiddleware(async (auth, req) => {
