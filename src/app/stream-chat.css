@@ -1,0 +1,168 @@
+/* Stream Chat Dark Theme Overrides for Porta */
+/* Matches the Porta design system: dark bg, glassmorphism, indigo accent */
+
+/* Root theme variables */
+.str-chat {
+  --str-chat__primary-color: #4f46e5 !important;
+  --str-chat__active-primary-color: #4338ca !important;
+  --str-chat__surface-color: #0a0a0c !important;
+  --str-chat__secondary-surface-color: #111827 !important;
+  --str-chat__primary-surface-color: rgba(79, 70, 229, 0.1) !important;
+  --str-chat__primary-surface-color-low-emphasis: rgba(79, 70, 229, 0.05) !important;
+  --str-chat__border-radius-circle: 9999px !important;
+  --str-chat__border-radius-sm: 0.375rem !important;
+  --str-chat__border-radius-md: 0.5rem !important;
+  --str-chat__border-radius-lg: 0.75rem !important;
+  --str-chat__border-radius-xl: 1rem !important;
+  --str-chat__font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+
+.str-chat__theme-dark {
+  --str-chat__text-color: #ededed !important;
+  --str-chat__text-low-emphasis-color: #9ca3af !important;
+  --str-chat__disabled-color: #4b5563 !important;
+  --str-chat__border-color: rgba(255, 255, 255, 0.08) !important;
+  --str-chat__message-bubble-color: #1f2937 !important;
+  --str-chat__message-actions-background-color: #111827 !important;
+}
+
+/* Channel List Styling - Glassmorphism */
+.str-chat__channel-list {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+  backdrop-filter: blur(12px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.str-chat__channel-preview-messenger {
+  background: transparent !important;
+  border-radius: 0.5rem !important;
+  margin: 0.25rem 0.5rem !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.str-chat__channel-preview-messenger:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.str-chat__channel-preview-messenger--active {
+  background: rgba(79, 70, 229, 0.15) !important;
+  border-left: 2px solid #4f46e5 !important;
+}
+
+/* Message Input Styling */
+.str-chat__message-input {
+  background: #111827 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 1rem !important;
+}
+
+.str-chat__textarea textarea {
+  background: #1f2937 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.5rem !important;
+  color: #ededed !important;
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+
+.str-chat__textarea textarea:focus {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+}
+
+.str-chat__textarea textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Send Button */
+.str-chat__send-button {
+  background: #4f46e5 !important;
+  border-radius: 0.5rem !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.str-chat__send-button:hover {
+  background: #4338ca !important;
+}
+
+/* Message Bubbles */
+.str-chat__message-simple {
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+
+.str-chat__message-bubble {
+  border-radius: 1rem !important;
+}
+
+.str-chat__message--me .str-chat__message-bubble {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+  color: white !important;
+}
+
+.str-chat__message:not(.str-chat__message--me) .str-chat__message-bubble {
+  background: #1f2937 !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Message List */
+.str-chat__list {
+  background: #0a0a0c !important;
+}
+
+.str-chat__main-panel {
+  background: #0a0a0c !important;
+}
+
+/* Channel Header */
+.str-chat__header-livestream {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Scrollbar Styling */
+.str-chat__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.str-chat__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.str-chat__list::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+
+.str-chat__list::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Empty State */
+.str-chat__empty-channel {
+  color: #9ca3af !important;
+}
+
+/* Date Separator */
+.str-chat__date-separator-date {
+  background: #1f2937 !important;
+  color: #9ca3af !important;
+  border-radius: 9999px !important;
+  padding: 0.25rem 0.75rem !important;
+  font-size: 0.75rem !important;
+}
+
+/* Reactions */
+.str-chat__message-reactions-list {
+  background: #1f2937 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9999px !important;
+}
+
+/* Loading States */
+.str-chat__loading-channel {
+  background: #0a0a0c !important;
+}
+
+.str-chat__loading-indicator {
+  color: #4f46e5 !important;
+}
