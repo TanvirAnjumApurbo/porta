@@ -33,6 +33,8 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.69.0",
     "resend": "^6.6.0",
+    "stream-chat": "^9.27.2",
+    "stream-chat-react": "^13.13.1",
     "stripe": "^20.1.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.2.1"
