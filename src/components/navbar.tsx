@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plane, Menu, X } from "lucide-react";
+import { Plane, Menu, X, MessageSquare } from "lucide-react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 
@@ -44,12 +44,16 @@ export function Navbar() {
               </button>
             </SignUpButton>
           </SignedOut>
-          
+
           <SignedIn>
+            <Link href="/messages" className="text-sm font-medium mr-2 sm:mr-4 hover:text-primary hidden sm:block">
+              <MessageSquare className="w-4 h-4 inline-block mr-1" />
+              Messages
+            </Link>
             <Link href="/dashboard" className="text-sm font-medium mr-2 sm:mr-4 hover:text-primary hidden sm:block">
               Dashboard
             </Link>
-            <UserButton 
+            <UserButton
               appearance={{
                 elements: {
                   avatarBox: "w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-primary/20"
@@ -59,7 +63,7 @@ export function Navbar() {
           </SignedIn>
 
           {/* Mobile Menu Toggle */}
-          <button 
+          <button
             className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
             onClick={() => setIsMobileOpen(!isMobileOpen)}
             aria-label="Toggle menu"
@@ -75,23 +79,31 @@ export function Navbar() {
         isMobileOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="px-4 py-4 space-y-2">
-          <Link 
-            href="/requests" 
+          <Link
+            href="/requests"
             className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
             onClick={() => setIsMobileOpen(false)}
           >
             Browse Requests
           </Link>
-          <Link 
-            href="/travelers" 
+          <Link
+            href="/travelers"
             className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
             onClick={() => setIsMobileOpen(false)}
           >
             Browse Travelers
           </Link>
           <SignedIn>
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/messages"
+              className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors sm:hidden"
+              onClick={() => setIsMobileOpen(false)}
+            >
+              <MessageSquare className="w-4 h-4 inline-block mr-2" />
+              Messages
+            </Link>
+            <Link
+              href="/dashboard"
               className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors sm:hidden"
               onClick={() => setIsMobileOpen(false)}
             >
@@ -101,7 +113,7 @@ export function Navbar() {
           <SignedOut>
             <div className="sm:hidden pt-2 border-t border-white/10">
               <SignInButton mode="modal" forceRedirectUrl="/auth-callback">
-                <button 
+                <button
                   className="block w-full px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors text-left"
                   onClick={() => setIsMobileOpen(false)}
                 >

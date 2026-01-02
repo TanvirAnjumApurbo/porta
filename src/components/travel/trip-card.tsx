@@ -2,6 +2,7 @@ import { Plane, Calendar, Package, ArrowRight, Bus, Clock, MapPin, Terminal, Doo
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ContactTravelerButton } from "@/components/chat/contact-traveler-button";
 
 interface TripCardProps {
     post: any; // Type flexibility for now
@@ -160,8 +161,12 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                             </span>
                         </div>
                         {!isOwnPost && (
-                            <div role="button" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "bg-primary/10 hover:bg-primary/20 text-primary h-7 text-xs font-medium cursor-pointer z-10")}>
-                                Contact
+                            <div className="z-10">
+                                <ContactTravelerButton
+                                    travelerId={post.userId}
+                                    travelerName={post.travelerName || 'Anonymous'}
+                                    travelPostId={post.id}
+                                />
                             </div>
                         )}
                     </div>
@@ -281,9 +286,11 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                     </div>
 
                     {!isOwnPost && (
-                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer">
-                            Contact Traveler
-                        </Button>
+                        <ContactTravelerButton
+                            travelerId={post.userId}
+                            travelerName={post.travelerName || 'Anonymous'}
+                            travelPostId={post.id}
+                        />
                     )}
                 </div>
             </DialogContent>
