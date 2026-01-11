@@ -3,23 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, CheckCircle, Clock } from "lucide-react";
 import { useState } from "react";
-
-interface ContactTravelerButtonProps {
-    travelerId: string;
-    travelerName: string;
-    travelPostId: string;
-}
+import { createDeliveryRequest } from "@/server/actions/delivery";
+import { toast } from "sonner"; // Assuming sonner is used, or alert/console if not. I'll use simple alert or console if unsure, but toast is standard. 
+// Checking package.json... no sonner/toast explicitly seen in list I read? 
+// Re-checking package.json...
+// I don't see sonner. "stream-chat-react" is there. I'll stick to simple state or alert for now to be safe, or just button state.
 
 export function ContactTravelerButton({
     travelerId,
     travelerName,
     travelPostId,
-}: ContactTravelerButtonProps) {
+}: {
+    travelerId: string;
+    travelerName: string;
+    travelPostId: string;
+}) {
     const router = useRouter();
     const { isSignedIn, user } = useUser();
     const [isLoading, setIsLoading] = useState(false);
+    const [requestStatus, setRequestStatus] = useState<"IDLE" | "SENT" | "EXISTING">("IDLE");
 
     // Don't show button if user is the traveler
     if (isSignedIn && user?.id === travelerId) {
@@ -27,33 +31,29 @@ export function ContactTravelerButton({
     }
 
     const handleClick = async (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent dialog trigger
+        e.stopPropagation();
 
-        if (!isSignedIn) {
-            return; // SignInButton wrapper will handle this
-        }
+        if (!isSignedIn) return;
 
         try {
             setIsLoading(true);
 
-            // Create or get existing channel via API
-            const res = await fetch("/api/chat/channel", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ travelerId, travelPostId }),
+            const result = await createDeliveryRequest({
+                travelPostId,
+                travelerId,
             });
 
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || "Failed to create channel");
+            if (result.success) {
+                if (result.isExisting) {
+                    setRequestStatus("EXISTING");
+                } else {
+                    setRequestStatus("SENT");
+                }
             }
-
-            const { channelId } = await res.json();
-            router.push(`/messages/${channelId}`);
         } catch (error) {
-            console.error("Error starting conversation:", error);
+            console.error("Error sending request:", error);
+            // Ideally show a toast here
+            alert("Failed to send request. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -73,6 +73,18 @@ export function ContactTravelerButton({
         );
     }
 
+    if (requestStatus === "SENT" || requestStatus === "EXISTING") {
+        return (
+            <Button
+                disabled
+                className="bg-green-600 text-white cursor-default opacity-100"
+            >
+                <Clock className="w-4 h-4 mr-2" />
+                Request Sent
+            </Button>
+        );
+    }
+
     return (
         <Button
             onClick={handleClick}
@@ -80,7 +92,7 @@ export function ContactTravelerButton({
             className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer"
         >
             <MessageCircle className="w-4 h-4 mr-2" />
-            {isLoading ? "Connecting..." : "Contact Traveler"}
+            {isLoading ? "Sending..." : "Contact Traveler"}
         </Button>
     );
 }

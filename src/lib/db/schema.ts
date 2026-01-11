@@ -1,4 +1,5 @@
 import { pgTable, text, boolean, timestamp, pgEnum, date, integer } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 export const verificationStatusEnum = pgEnum("verification_status", [
   "IDLE",
@@ -154,3 +155,29 @@ export const dealTerms = pgTable("deal_terms", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const travelPostRelations = relations(travelPosts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [travelPosts.userId],
+    references: [users.id],
+  }),
+  deliveryRequests: many(deliveryRequests),
+}));
+
+export const deliveryRequestRelations = relations(deliveryRequests, ({ one }) => ({
+  travelPost: one(travelPosts, {
+    fields: [deliveryRequests.travelPostId],
+    references: [travelPosts.id],
+  }),
+  traveller: one(users, {
+    fields: [deliveryRequests.travellerId],
+    references: [users.id],
+    relationName: "traveller",
+  }),
+  customer: one(users, {
+    fields: [deliveryRequests.customerId],
+    references: [users.id],
+    relationName: "customer",
+  }),
+}));
+
