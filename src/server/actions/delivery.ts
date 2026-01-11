@@ -190,7 +190,7 @@ export async function proposeDeal({
     await channel.addMembers([userId]); // Ensure user is member
 
     await channel.sendMessage({
-        text: `Deal Proposed: ${weight}kg for ${currency} ${price / 100}`,
+        text: `Deal Proposed: ${(weight / 1000).toFixed(1)}kg for ${currency} ${(price / 100).toFixed(2)}`,
         user: { id: userId },
         type: "system",
         attachments: [{

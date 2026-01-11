@@ -12,7 +12,7 @@ interface DealWidgetProps {
     channel: any; // Stream Chat Channel
     activeDeal?: {
         id: string;
-        price: number;
+        proposedPrice: number;
         weight: number;
         currency: string;
         proposedBy: string;
@@ -36,13 +36,16 @@ export function DealWidget({ channel, activeDeal, travelerId, deliveryRequestId 
 
     // Handles proposing a new deal
     const handlePropose = async () => {
-        if (!price || !weight) return;
+        if (!price || !weight) {
+            alert("Please fill in both weight and price");
+            return;
+        }
         setLoading(true);
         try {
             await proposeDeal({
                 requestId: deliveryRequestId,
-                price: parseFloat(price) * 100, // Convert to cents
-                weight: parseInt(weight),
+                price: Math.round(parseFloat(price) * 100), // Convert to cents
+                weight: Math.round(parseFloat(weight) * 1000), // Convert kg to grams
                 currency: "USD",
             });
             setIsOpen(false);
@@ -50,7 +53,7 @@ export function DealWidget({ channel, activeDeal, travelerId, deliveryRequestId 
             setWeight("");
         } catch (error) {
             console.error(error);
-            alert("Failed to propose deal");
+            alert("Failed to propose deal. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -79,7 +82,7 @@ export function DealWidget({ channel, activeDeal, travelerId, deliveryRequestId 
                     <div>
                         <p className="font-semibold text-green-400">Deal Confirmed</p>
                         <p className="text-xs text-zinc-400">
-                            {activeDeal.weight}kg for {activeDeal.currency} {activeDeal.price / 100}
+                            {(activeDeal.weight / 1000).toFixed(1)}kg for {activeDeal.currency} {(activeDeal.proposedPrice / 100).toFixed(2)}
                         </p>
                     </div>
                 </div>
@@ -97,12 +100,12 @@ export function DealWidget({ channel, activeDeal, travelerId, deliveryRequestId 
                         <div className="flex items-center gap-4 mt-1">
                             <div className="flex items-center gap-1.5 text-zinc-200">
                                 <Weight className="w-4 h-4 text-blue-400" />
-                                <span className="font-mono font-medium">{activeDeal.weight}kg</span>
+                                <span className="font-mono font-medium">{(activeDeal.weight / 1000).toFixed(1)}kg</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-zinc-200">
                                 <DollarSign className="w-4 h-4 text-green-400" />
                                 <span className="font-mono font-medium">
-                                    {(activeDeal.price / 100).toFixed(2)}
+                                    {(activeDeal.proposedPrice / 100).toFixed(2)}
                                 </span>
                             </div>
                         </div>
@@ -155,7 +158,7 @@ export function DealWidget({ channel, activeDeal, travelerId, deliveryRequestId 
                                 </div>
                             </div>
                             <Button className="w-full bg-blue-600 hover:bg-blue-500" onClick={handlePropose} disabled={loading}>
-                                {loading ? "Send Proposal" : "Send Proposal"}
+                                {loading ? "Sending..." : "Send Proposal"}
                             </Button>
                         </div>
                     </DialogContent>

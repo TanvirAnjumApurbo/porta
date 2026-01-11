@@ -51,51 +51,66 @@ export function DeliveryStatusWidget({
         }
     };
 
-    // Status Timeline
     const steps = [
-        { key: "CONFIRMED", label: "Deal Confirmed", icon: CheckCircle2 },
-        { key: "IN_PROGRESS", label: "In Transit", icon: Truck },
-        { key: "COMPLETED", label: "Delivered", icon: Package },
+        { key: "CONFIRMED", label: "Confirmed", icon: CheckCircle2, color: "text-blue-400" },
+        { key: "IN_PROGRESS", label: "In Transit", icon: Truck, color: "text-amber-400" },
+        { key: "COMPLETED", label: "Delivered", icon: Package, color: "text-green-400" },
     ];
 
     const currentStepIndex = steps.findIndex(s => s.key === currentStatus);
 
     return (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-4">
-            <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Delivery Status
-            </h3>
+        <div className="bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-zinc-800 rounded-xl p-5 space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                        <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    Delivery Status
+                </h3>
+                {currentStatus === "COMPLETED" && (
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">
+                        Complete
+                    </span>
+                )}
+            </div>
 
             {/* Timeline */}
-            <div className="flex items-center justify-between">
-                {steps.map((step, index) => {
-                    const isActive = currentStepIndex >= index;
-                    const isCurrent = currentStatus === step.key;
-                    const Icon = step.icon;
+            <div className="relative">
+                {/* Connector Line Background */}
+                <div className="absolute top-5 left-5 right-5 h-0.5 bg-zinc-800 z-0" />
+                {/* Connector Line Progress */}
+                <div
+                    className="absolute top-5 left-5 h-0.5 bg-primary z-0 transition-all duration-500"
+                    style={{ width: `${Math.max(0, (currentStepIndex / (steps.length - 1)) * 100)}%`, maxWidth: 'calc(100% - 40px)' }}
+                />
 
-                    return (
-                        <div key={step.key} className="flex flex-col items-center flex-1">
-                            <div className={`
-                                w-10 h-10 rounded-full flex items-center justify-center 
-                                transition-all duration-300
-                                ${isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-zinc-800 text-zinc-500'}
-                                ${isCurrent ? 'ring-2 ring-primary ring-offset-2 ring-offset-zinc-900' : ''}
-                            `}>
-                                <Icon className="w-5 h-5" />
+                <div className="relative z-10 flex justify-between">
+                    {steps.map((step, index) => {
+                        const isActive = currentStepIndex >= index;
+                        const isCurrent = currentStatus === step.key;
+                        const Icon = step.icon;
+
+                        return (
+                            <div key={step.key} className="flex flex-col items-center">
+                                <div className={`
+                                    w-10 h-10 rounded-full flex items-center justify-center 
+                                    transition-all duration-300 border-2
+                                    ${isActive
+                                        ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                        : 'bg-zinc-900 border-zinc-700 text-zinc-500'}
+                                    ${isCurrent ? 'scale-110' : ''}
+                                `}>
+                                    <Icon className="w-4 h-4" />
+                                </div>
+                                <span className={`text-[11px] mt-2 font-medium ${isActive ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                                    {step.label}
+                                </span>
                             </div>
-                            <span className={`text-[10px] mt-2 text-center ${isActive ? 'text-zinc-200' : 'text-zinc-500'}`}>
-                                {step.label}
-                            </span>
-                            {/* Connector Line */}
-                            {index < steps.length - 1 && (
-                                <div className="absolute left-0 w-full h-0.5 bg-zinc-700 -z-10" />
-                            )}
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
 
             {/* Action Buttons */}
@@ -103,7 +118,8 @@ export function DeliveryStatusWidget({
                 <Button
                     onClick={handleStartDelivery}
                     disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-500"
+                    className="w-full bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all"
+                    size="lg"
                 >
                     {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -114,11 +130,18 @@ export function DeliveryStatusWidget({
                 </Button>
             )}
 
+            {currentStatus === "CONFIRMED" && isCustomer && (
+                <div className="text-center py-2 text-zinc-400 text-sm">
+                    Waiting for traveler to start delivery...
+                </div>
+            )}
+
             {currentStatus === "IN_PROGRESS" && isCustomer && (
                 <Button
                     onClick={handleCompleteDelivery}
                     disabled={isLoading}
-                    className="w-full bg-green-600 hover:bg-green-500"
+                    className="w-full bg-green-600 hover:bg-green-500 shadow-lg shadow-green-500/20 transition-all"
+                    size="lg"
                 >
                     {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -129,9 +152,20 @@ export function DeliveryStatusWidget({
                 </Button>
             )}
 
+            {currentStatus === "IN_PROGRESS" && isTraveler && (
+                <div className="text-center py-2 text-amber-400 text-sm font-medium flex items-center justify-center gap-2">
+                    <Truck className="w-4 h-4" />
+                    Package in transit...
+                </div>
+            )}
+
             {currentStatus === "COMPLETED" && (
-                <div className="text-center py-2 text-green-400 text-sm font-medium">
-                    ✅ Delivery Complete
+                <div className="text-center py-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <div className="text-green-400 text-sm font-medium flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-5 h-5" />
+                        Delivery Successfully Completed
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-1">Thank you for using Porta!</p>
                 </div>
             )}
         </div>

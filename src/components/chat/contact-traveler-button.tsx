@@ -36,16 +36,11 @@ export function ContactTravelerButton({
             try {
                 const status = await checkDeliveryRequestStatus(travelPostId);
                 if (status === "REQUESTED") setRequestStatus("SENT");
-                else if (status === "CANCELLED") setRequestStatus("IDLE"); // Allow re-request if cancelled (and not yet "revived" by user action) - actually server action handles revival, so IDLE is fine if we want them to click again. The issue descriptions says "Invisible Rejection", so maybe showing "Rejected" is better? 
-                // Wait, server action `createDeliveryRequest` revives CANCELLED/REJECTED. 
-                // So if it is REJECTED, we can show "Request Rejected" but allow clicking to "Retry".
-                // But if it is CANCELLED (by rejection), the status in DB is "CANCELLED".
-                // "REJECTED" is a new enum I added.
-                // Rejection logic in `manageDeliveryRequest`: sets status to "CANCELLED". 
-                // I should change that to "REJECTED" in `manageDeliveryRequest` too!
-                // For now, if "CANCELLED" or "REJECTED", treat as retryable so IDLE or specific state.
                 else if (status === "REJECTED") setRequestStatus("REJECTED");
-                else if (status === "NEGOTIATING" || status === "CONFIRMED") setRequestStatus("EXISTING");
+                else if (status === "NEGOTIATING" || status === "CONFIRMED" || status === "IN_PROGRESS" || status === "COMPLETED") {
+                    setRequestStatus("EXISTING");
+                }
+                // CANCELLED status allows re-request (default IDLE state)
             } catch (error) {
                 console.error("Error checking status:", error);
             }
