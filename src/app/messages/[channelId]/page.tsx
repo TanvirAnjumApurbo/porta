@@ -22,9 +22,13 @@ interface ChatPageProps {
     }>;
 }
 
+import { DealWidget } from "@/components/chat/deal-widget";
+import { getActiveDeal } from "@/server/actions/delivery";
+
 export default function ChatPage({ params }: ChatPageProps) {
     const [channelId, setChannelId] = useState<string | null>(null);
     const [channel, setChannel] = useState<StreamChannel | null>(null);
+    const [activeDeal, setActiveDeal] = useState<any>(null); // State for active deal
     const [isLoading, setIsLoading] = useState(true);
     const { client } = useChatClient();
     const { isSignedIn } = useUser();
@@ -44,6 +48,15 @@ export default function ChatPage({ params }: ChatPageProps) {
                 const chatChannel = client.channel("messaging", channelId);
                 await chatChannel.watch();
                 setChannel(chatChannel);
+
+                // Fetch Active Deal if delivery Request ID exists
+                // Cast to any because custom data doesn't auto-type
+                const customData = chatChannel.data as any;
+                if (customData?.delivery_request_id) {
+                    const deal = await getActiveDeal(customData.delivery_request_id);
+                    if (deal) setActiveDeal(deal);
+                }
+
             } catch (error) {
                 console.error("Error loading channel:", error);
                 router.push("/messages");
@@ -114,6 +127,15 @@ export default function ChatPage({ params }: ChatPageProps) {
                     <Channel channel={channel}>
                         <Window>
                             <ChannelHeader />
+                            {/* Deal Widget Area */}
+                            <div className="px-4 pt-4">
+                                <DealWidget
+                                    channel={channel}
+                                    travelerId={(channel.data as any)?.created_by?.id as string}
+                                    deliveryRequestId={(channel.data as any)?.delivery_request_id as string}
+                                    activeDeal={activeDeal}
+                                />
+                            </div>
                             <MessageList />
                             <MessageInput />
                         </Window>

@@ -22,6 +22,7 @@ export const deliveryRequestStatusEnum = pgEnum("delivery_request_status", [
   "IN_PROGRESS",
   "COMPLETED",
   "CANCELLED",
+  "REJECTED"
 ]);
 
 export const dealStatusEnum = pgEnum("deal_status", [
@@ -164,7 +165,7 @@ export const travelPostRelations = relations(travelPosts, ({ one, many }) => ({
   deliveryRequests: many(deliveryRequests),
 }));
 
-export const deliveryRequestRelations = relations(deliveryRequests, ({ one }) => ({
+export const deliveryRequestRelations = relations(deliveryRequests, ({ one, many }) => ({
   travelPost: one(travelPosts, {
     fields: [deliveryRequests.travelPostId],
     references: [travelPosts.id],
@@ -178,6 +179,18 @@ export const deliveryRequestRelations = relations(deliveryRequests, ({ one }) =>
     fields: [deliveryRequests.customerId],
     references: [users.id],
     relationName: "customer",
+  }),
+  dealTerms: many(dealTerms),
+}));
+
+export const dealTermsRelations = relations(dealTerms, ({ one }) => ({
+  deliveryRequest: one(deliveryRequests, {
+    fields: [dealTerms.deliveryRequestId],
+    references: [deliveryRequests.id],
+  }),
+  proposer: one(users, {
+    fields: [dealTerms.proposedBy],
+    references: [users.id],
   }),
 }));
 
