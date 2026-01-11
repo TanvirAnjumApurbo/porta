@@ -301,3 +301,93 @@ export async function checkDeliveryRequestStatus(travelPostId: string) {
 
     return request ? request.status : null;
 }
+
+export async function startDelivery(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    // 1. Get the request
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+    });
+
+    if (!request) throw new Error("Request not found");
+
+    // Only traveler can start delivery
+    if (request.travellerId !== userId) throw new Error("Only the traveler can start delivery");
+
+    // Must be in CONFIRMED status
+    if (request.status !== "CONFIRMED") throw new Error("Delivery can only be started after deal is confirmed");
+
+    // 2. Update status to IN_PROGRESS
+    await db.update(deliveryRequests)
+        .set({ status: "IN_PROGRESS", updatedAt: new Date() })
+        .where(eq(deliveryRequests.id, requestId));
+
+    // 3. Send system message
+    const serverClient = getStreamClient();
+    const channelId = `delivery_${requestId}`;
+    const channel = serverClient.channel("messaging", channelId);
+
+    await channel.sendMessage({
+        text: "🚀 Delivery has started! The traveler is now on their way.",
+        user: { id: userId },
+        type: "system",
+        ...({ event_type: "delivery_started" } as any)
+    });
+
+    revalidatePath(`/messages/${channelId}`);
+    return { success: true };
+}
+
+export async function completeDelivery(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    // 1. Get the request
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+    });
+
+    if (!request) throw new Error("Request not found");
+
+    // Only customer can confirm completion
+    if (request.customerId !== userId) throw new Error("Only the customer can confirm delivery");
+
+    // Must be in IN_PROGRESS status
+    if (request.status !== "IN_PROGRESS") throw new Error("Delivery must be in progress to complete");
+
+    // 2. Update status to COMPLETED
+    await db.update(deliveryRequests)
+        .set({ status: "COMPLETED", updatedAt: new Date() })
+        .where(eq(deliveryRequests.id, requestId));
+
+    // 3. Send system message and freeze channel
+    const serverClient = getStreamClient();
+    const channelId = `delivery_${requestId}`;
+    const channel = serverClient.channel("messaging", channelId);
+
+    await channel.sendMessage({
+        text: "✅ Delivery completed! Thank you for using Porta.",
+        user: { id: userId },
+        type: "system",
+        ...({ event_type: "delivery_completed" } as any)
+    });
+
+    // Freeze the channel to prevent further messages
+    await channel.update({ frozen: true });
+
+    revalidatePath(`/messages/${channelId}`);
+    return { success: true };
+}
+
+export async function getDeliveryRequest(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) return null;
+
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+    });
+
+    return request;
+}

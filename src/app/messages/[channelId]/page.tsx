@@ -23,15 +23,17 @@ interface ChatPageProps {
 }
 
 import { DealWidget } from "@/components/chat/deal-widget";
-import { getActiveDeal } from "@/server/actions/delivery";
+import { DeliveryStatusWidget } from "@/components/chat/delivery-status-widget";
+import { getActiveDeal, getDeliveryRequest } from "@/server/actions/delivery";
 
 export default function ChatPage({ params }: ChatPageProps) {
     const [channelId, setChannelId] = useState<string | null>(null);
     const [channel, setChannel] = useState<StreamChannel | null>(null);
-    const [activeDeal, setActiveDeal] = useState<any>(null); // State for active deal
+    const [activeDeal, setActiveDeal] = useState<any>(null);
+    const [deliveryRequest, setDeliveryRequest] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { client } = useChatClient();
-    const { isSignedIn } = useUser();
+    const { isSignedIn, user } = useUser();
     const router = useRouter();
 
     // Unwrap params
@@ -49,12 +51,15 @@ export default function ChatPage({ params }: ChatPageProps) {
                 await chatChannel.watch();
                 setChannel(chatChannel);
 
-                // Fetch Active Deal if delivery Request ID exists
-                // Cast to any because custom data doesn't auto-type
+                // Fetch Active Deal and Delivery Request if ID exists
                 const customData = chatChannel.data as any;
                 if (customData?.delivery_request_id) {
-                    const deal = await getActiveDeal(customData.delivery_request_id);
+                    const [deal, request] = await Promise.all([
+                        getActiveDeal(customData.delivery_request_id),
+                        getDeliveryRequest(customData.delivery_request_id)
+                    ]);
                     if (deal) setActiveDeal(deal);
+                    if (request) setDeliveryRequest(request);
                 }
 
             } catch (error) {
@@ -128,13 +133,22 @@ export default function ChatPage({ params }: ChatPageProps) {
                         <Window>
                             <ChannelHeader />
                             {/* Deal Widget Area */}
-                            <div className="px-4 pt-4">
+                            <div className="px-4 pt-4 space-y-3">
                                 <DealWidget
                                     channel={channel}
                                     travelerId={(channel.data as any)?.created_by?.id as string}
                                     deliveryRequestId={(channel.data as any)?.delivery_request_id as string}
                                     activeDeal={activeDeal}
                                 />
+                                {/* Show Delivery Status after deal is accepted */}
+                                {deliveryRequest && (deliveryRequest.status === "CONFIRMED" || deliveryRequest.status === "IN_PROGRESS" || deliveryRequest.status === "COMPLETED") && (
+                                    <DeliveryStatusWidget
+                                        requestId={deliveryRequest.id}
+                                        status={deliveryRequest.status}
+                                        isTraveler={user?.id === deliveryRequest.travellerId}
+                                        isCustomer={user?.id === deliveryRequest.customerId}
+                                    />
+                                )}
                             </div>
                             <MessageList />
                             <MessageInput />
