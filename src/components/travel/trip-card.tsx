@@ -1,4 +1,4 @@
-import { Plane, Calendar, Package, ArrowRight, Bus, Clock, MapPin, Terminal, DoorOpen } from "lucide-react";
+import { Plane, Calendar, Package, ArrowRight, Bus, Clock, MapPin, Terminal, DoorOpen, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,11 +41,29 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                 <div className="glass-card p-4 sm:p-6 rounded-xl hover:border-primary/50 transition-colors cursor-pointer group h-full flex flex-col relative overflow-hidden">
                     {/* Int'l / Domestic Badge */}
                     {post.travelType === 'INTERNATIONAL' ? (
-                        <div className="absolute top-4 right-4">
+                        <div className="absolute top-4 right-4 flex items-center gap-2">
+                            {post.postStatus === 'LOCKED' ? (
+                                <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
+                                    <Lock className="w-2.5 h-2.5" />Fully Booked
+                                </span>
+                            ) : post.remainingWeight !== null && post.remainingWeight !== undefined ? (
+                                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+                                    {Math.round(post.remainingWeight / 1000)}kg left
+                                </span>
+                            ) : null}
                             <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full border border-purple-500/20">International</span>
                         </div>
                     ) : (
-                        <div className="absolute top-4 right-4">
+                        <div className="absolute top-4 right-4 flex items-center gap-2">
+                            {post.postStatus === 'LOCKED' ? (
+                                <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
+                                    <Lock className="w-2.5 h-2.5" />Fully Booked
+                                </span>
+                            ) : post.remainingWeight !== null && post.remainingWeight !== undefined ? (
+                                <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+                                    {Math.round(post.remainingWeight / 1000)}kg left
+                                </span>
+                            ) : null}
                             <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">Domestic</span>
                         </div>
                     )}
@@ -166,6 +184,7 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                                     travelerId={post.userId}
                                     travelerName={post.travelerName || 'Anonymous'}
                                     travelPostId={post.id}
+                                    postStatus={post.postStatus}
                                 />
                             </div>
                         )}
@@ -290,6 +309,7 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                             travelerId={post.userId}
                             travelerName={post.travelerName || 'Anonymous'}
                             travelPostId={post.id}
+                            postStatus={post.postStatus}
                         />
                     )}
                 </div>

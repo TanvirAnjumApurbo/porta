@@ -3,19 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { MessageCircle, CheckCircle, Clock, XCircle, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createDeliveryRequest, checkDeliveryRequestStatus } from "@/server/actions/delivery";
-// I don't see sonner. "stream-chat-react" is there. I'll stick to simple state or alert for now to be safe, or just button state.
 
 export function ContactTravelerButton({
     travelerId,
     travelerName,
     travelPostId,
+    postStatus = "OPEN",
 }: {
     travelerId: string;
     travelerName: string;
     travelPostId: string;
+    postStatus?: "OPEN" | "LOCKED" | "COMPLETED" | "CANCELLED";
 }) {
     const router = useRouter();
     const { isSignedIn, user } = useUser();
@@ -89,6 +90,19 @@ export function ContactTravelerButton({
                     Contact Traveler
                 </Button>
             </SignInButton>
+        );
+    }
+
+    // Show locked state for fully booked posts
+    if (postStatus === "LOCKED") {
+        return (
+            <Button
+                disabled
+                className="bg-zinc-700 text-zinc-400 cursor-not-allowed"
+            >
+                <Lock className="w-4 h-4 mr-2" />
+                Fully Booked
+            </Button>
         );
     }
 

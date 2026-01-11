@@ -239,7 +239,25 @@ export async function acceptDeal({ dealId }: { dealId: string }) {
         .set({ status: "CONFIRMED" })
         .where(eq(deliveryRequests.id, req.id));
 
-    // 4. Send System Message
+    // 4. Deduct capacity from travel post
+    const travelPost = await db.query.travelPosts.findFirst({
+        where: eq(travelPosts.id, req.travelPostId),
+    });
+
+    if (travelPost) {
+        const currentRemaining = travelPost.remainingWeight || 0;
+        const newRemaining = Math.max(0, currentRemaining - deal.weight);
+        const newStatus = newRemaining <= 0 ? "LOCKED" : travelPost.postStatus;
+
+        await db.update(travelPosts)
+            .set({
+                remainingWeight: newRemaining,
+                postStatus: newStatus
+            })
+            .where(eq(travelPosts.id, req.travelPostId));
+    }
+
+    // 5. Send System Message
     const serverClient = getStreamClient();
     const channelId = `delivery_${req.id}`;
     const channel = serverClient.channel("messaging", channelId);
@@ -248,12 +266,11 @@ export async function acceptDeal({ dealId }: { dealId: string }) {
         text: `Deal Accepted! Trip is confirmed.`,
         user: { id: userId },
         type: "system",
-        // custom field needs handling or cast, or use text only if simple. 
-        // Stream supports extra data, but types might be strict.
         ...({ event_type: "deal_accepted" } as any)
     });
 
     revalidatePath(`/messages/${channelId}`);
+    revalidatePath("/travelers"); // Refresh travelers list to show updated capacity
     return { success: true };
 }
 

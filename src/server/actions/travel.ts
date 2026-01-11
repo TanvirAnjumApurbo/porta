@@ -12,19 +12,19 @@ const travelPostSchema = z.object({
   // Trip Details
   travelType: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   transportMode: z.enum(["FLIGHT", "OTHER"]),
-  
+
   // Location
   departureCity: z.string().min(1, "Departure city is required"),
   departureCountry: z.string().min(1, "Departure country is required"),
   destinationCity: z.string().min(1, "Destination city is required"),
   destinationCountry: z.string().min(1, "Destination country is required"),
-  
+
   // Other Mode Specific (Optional)
   departureStation: z.string().optional(),
   destinationStation: z.string().optional(),
   departureState: z.string().optional(),
   destinationState: z.string().optional(),
-  
+
   // Flight Specific (Optional)
   airlineName: z.string().optional(),
   flightNumber: z.string().optional(),
@@ -91,31 +91,34 @@ export async function createTravelPost(formData: TravelPostInput) {
     finalDepartureTime = `${data.travelDate}T${finalDepartureTime}:00`;
   }
   if (finalArrivalTime && finalArrivalTime.length === 5 && finalArrivalTime.includes(":")) {
-     // Use arrivalDate if provided, otherwise fallback to travelDate (Departure Date)
+    // Use arrivalDate if provided, otherwise fallback to travelDate (Departure Date)
     const targetDate = data.arrivalDate || data.travelDate;
     finalArrivalTime = `${targetDate}T${finalArrivalTime}:00`;
   }
 
+  // Convert availableWeight from kg string to grams for capacity tracking
+  const weightInGrams = parseInt(data.availableWeight, 10) * 1000;
+
   await db.insert(travelPosts).values({
     userId: dbUser.id,
-    
+
     travelType: data.travelType,
     transportMode: data.transportMode,
-    
+
     departureCity: data.departureCity,
     departureCountry: data.departureCountry,
     destinationCity: data.destinationCity,
     destinationCountry: data.destinationCountry,
     originAirport: data.originAirport,
     destinationAirport: data.destinationAirport,
-    
+
     departureStation: data.departureStation,
     destinationStation: data.destinationStation,
     departureState: data.departureState,
     destinationState: data.destinationState,
-    
+
     travelDate: data.travelDate,
-    
+
     airlineName: data.airlineName,
     flightNumber: data.flightNumber,
     seatClass: data.seatClass,
@@ -128,11 +131,16 @@ export async function createTravelPost(formData: TravelPostInput) {
     departureTimezone: data.departureTimezone,
     arrivalTimezone: data.arrivalTimezone,
     arrivalDate: data.arrivalDate,
-    
+
     availableWeight: data.availableWeight,
     availableSpace: data.availableSpace,
     ticketImageUrl: data.ticketImageUrl,
     notes: data.notes,
+
+    // Capacity tracking (Model B)
+    numericWeight: weightInGrams,
+    remainingWeight: weightInGrams,
+    postStatus: "OPEN",
   });
 
   revalidatePath("/travelers");
@@ -159,7 +167,7 @@ export async function getTravelPosts() {
       notes: true,
       createdAt: true,
       userId: true,
-      
+
       // Flight Details
       airlineName: true,
       flightNumber: true,
@@ -172,7 +180,7 @@ export async function getTravelPosts() {
       destinationStation: true,
       departureState: true,
       destinationState: true,
-      
+
       // Detailed Flight Info
       departureTerminal: true,
       departureGate: true,
@@ -181,6 +189,11 @@ export async function getTravelPosts() {
       departureTimezone: true,
       arrivalTimezone: true,
       arrivalDate: true,
+
+      // Capacity tracking (Model B)
+      postStatus: true,
+      remainingWeight: true,
+      numericWeight: true,
     },
   });
 
@@ -229,25 +242,25 @@ export async function getMyTravelPosts() {
 
 export async function searchFlight(flightCode: string) {
   const flightRes = await AviationStack.getFlight(flightCode);
-  
+
   if (!flightRes.success || !flightRes.data) {
     return { success: false, error: flightRes.error || "Flight not found" };
   }
 
   const flight = flightRes.data as any; // Type assertion if needed or update interface
-  
+
   // Parallel fetch for airports details to get City/Country
   // Note: API might fail if key limit reached, handle gracefully
   let depAirport = null;
   let destAirport = null;
 
   try {
-     const [depRes, destRes] = await Promise.all([
-        AviationStack.getAirportByIata(flight.departure.iata),
-        AviationStack.getAirportByIata(flight.arrival.iata)
-     ]);
-     if (depRes.success) depAirport = depRes.data;
-     if (destRes.success) destAirport = destRes.data;
+    const [depRes, destRes] = await Promise.all([
+      AviationStack.getAirportByIata(flight.departure.iata),
+      AviationStack.getAirportByIata(flight.arrival.iata)
+    ]);
+    if (depRes.success) depAirport = depRes.data;
+    if (destRes.success) destAirport = destRes.data;
   } catch (e) { console.error("Airport fetch failed", e); }
 
   return {
@@ -273,7 +286,7 @@ export async function searchFlight(flightCode: string) {
         actual: flight.departure.actual,
         timezone: flight.departure.timezone,
         delay: flight.departure.delay,
-        city: depAirport?.city_name || flight.departure.timezone?.split('/')[1]?.replace(/_/g, ' ') || "", 
+        city: depAirport?.city_name || flight.departure.timezone?.split('/')[1]?.replace(/_/g, ' ') || "",
         country: depAirport?.country_name || "",
       },
       arrival: {
