@@ -3,9 +3,10 @@
 import { useChatClient } from "@/components/chat/chat-provider";
 import { ChannelList, ChannelPreviewMessenger } from "stream-chat-react";
 import { useRouter } from "next/navigation";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Package, ArrowRight } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
-import { RequestsInbox } from "@/components/dashboard/requests-inbox";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function MessagesPage() {
     const { client, isConnecting } = useChatClient();
@@ -43,12 +44,27 @@ export default function MessagesPage() {
             <div className="w-full max-w-sm border-r border-white/5 flex flex-col">
                 <div className="p-4 border-b border-white/5">
                     <h1 className="text-xl font-bold">Messages</h1>
-                    <p className="text-sm text-zinc-500">Your conversations with travelers</p>
+                    <p className="text-sm text-zinc-500">Your conversations</p>
                 </div>
 
-                {/* Inbox for pending requests */}
-                <div className="p-4">
-                    <RequestsInbox />
+                {/* Quick Link to Requests */}
+                <div className="p-4 border-b border-white/5">
+                    <Link href="/requests">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 hover:border-primary/50 transition-colors group cursor-pointer">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                        <Package className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-zinc-200">My Requests</p>
+                                        <p className="text-xs text-zinc-500">View incoming & sent requests</p>
+                                    </div>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                            </div>
+                        </div>
+                    </Link>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -70,7 +86,7 @@ export default function MessagesPage() {
                                 <MessageSquare className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
                                 <p className="text-zinc-500 text-sm">No active conversations</p>
                                 <p className="text-zinc-600 text-xs mt-1">
-                                    Check requests above or contact a traveler
+                                    Conversations will appear here after a request is accepted and paid
                                 </p>
                             </div>
                         )}
@@ -80,14 +96,22 @@ export default function MessagesPage() {
 
             {/* Empty State - Select a conversation */}
             <div className="flex-1 flex items-center justify-center bg-zinc-950/50">
-                <div className="text-center">
+                <div className="text-center max-w-md px-4">
                     <MessageSquare className="w-16 h-16 text-zinc-800 mx-auto mb-4" />
                     <h2 className="text-xl font-semibold text-zinc-400 mb-2">
                         Select a conversation
                     </h2>
-                    <p className="text-zinc-600 text-sm">
-                        Choose from your existing conversations or contact a traveler
+                    <p className="text-zinc-600 text-sm mb-6">
+                        Choose from your existing conversations, or start by browsing travelers and sending a request
                     </p>
+                    <div className="flex gap-3 justify-center">
+                        <Button variant="outline" asChild className="border-zinc-700">
+                            <Link href="/travelers">Browse Travelers</Link>
+                        </Button>
+                        <Button asChild>
+                            <Link href="/requests">My Requests</Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

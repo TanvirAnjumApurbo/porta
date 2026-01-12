@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Loader2, Truck, CheckCircle2, Package, Clock } from "lucide-react";
-import { startDelivery, completeDelivery } from "@/server/actions/delivery";
+import { Loader2, CheckCircle2, Package, CreditCard, PartyPopper } from "lucide-react";
+import { markDelivered, confirmDelivery } from "@/server/actions/delivery";
 
 interface DeliveryStatusWidgetProps {
     requestId: string;
@@ -18,46 +19,56 @@ export function DeliveryStatusWidget({
     isTraveler,
     isCustomer
 }: DeliveryStatusWidgetProps) {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [currentStatus, setCurrentStatus] = useState(status);
 
-    const handleStartDelivery = async () => {
+    const handleMarkDelivered = async () => {
         try {
             setIsLoading(true);
-            const result = await startDelivery(requestId);
+            const result = await markDelivered(requestId);
             if (result.success) {
-                setCurrentStatus("IN_PROGRESS");
+                setCurrentStatus("DELIVERED");
+                router.refresh();
+            } else {
+                alert(result.error || "Failed to mark as delivered");
             }
         } catch (error) {
-            console.error("Error starting delivery:", error);
-            alert("Failed to start delivery. Please try again.");
+            console.error("Error marking delivered:", error);
+            alert("Failed to mark as delivered. Please try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleCompleteDelivery = async () => {
+    const handleConfirmDelivery = async () => {
         try {
             setIsLoading(true);
-            const result = await completeDelivery(requestId);
+            const result = await confirmDelivery(requestId);
             if (result.success) {
                 setCurrentStatus("COMPLETED");
+                router.refresh();
+            } else {
+                alert(result.error || "Failed to confirm delivery");
             }
         } catch (error) {
-            console.error("Error completing delivery:", error);
-            alert("Failed to complete delivery. Please try again.");
+            console.error("Error confirming delivery:", error);
+            alert("Failed to confirm delivery. Please try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Simplified 3-step flow: Paid → Delivered → Complete
     const steps = [
-        { key: "CONFIRMED", label: "Confirmed", icon: CheckCircle2, color: "text-blue-400" },
-        { key: "IN_PROGRESS", label: "In Transit", icon: Truck, color: "text-amber-400" },
-        { key: "COMPLETED", label: "Delivered", icon: Package, color: "text-green-400" },
+        { key: "PAID", label: "Paid", icon: CreditCard },
+        { key: "DELIVERED", label: "Delivered", icon: Package },
+        { key: "COMPLETED", label: "Complete", icon: PartyPopper },
     ];
 
-    const currentStepIndex = steps.findIndex(s => s.key === currentStatus);
+    // Handle IN_TRANSIT as equivalent to PAID for display purposes (legacy support)
+    const displayStatus = currentStatus === "IN_TRANSIT" ? "PAID" : currentStatus;
+    const currentStepIndex = steps.findIndex(s => s.key === displayStatus);
 
     return (
         <div className="bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 border border-zinc-800 rounded-xl p-5 space-y-5">
@@ -65,7 +76,7 @@ export function DeliveryStatusWidget({
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                     <div className="p-1.5 bg-primary/10 rounded-lg">
-                        <Clock className="w-4 h-4 text-primary" />
+                        <Package className="w-4 h-4 text-primary" />
                     </div>
                     Delivery Status
                 </h3>
@@ -89,7 +100,7 @@ export function DeliveryStatusWidget({
                 <div className="relative z-10 flex justify-between">
                     {steps.map((step, index) => {
                         const isActive = currentStepIndex >= index;
-                        const isCurrent = currentStatus === step.key;
+                        const isCurrent = displayStatus === step.key;
                         const Icon = step.icon;
 
                         return (
@@ -114,31 +125,31 @@ export function DeliveryStatusWidget({
             </div>
 
             {/* Action Buttons */}
-            {currentStatus === "CONFIRMED" && isTraveler && (
+            {(currentStatus === "PAID" || currentStatus === "IN_TRANSIT") && isTraveler && (
                 <Button
-                    onClick={handleStartDelivery}
+                    onClick={handleMarkDelivered}
                     disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all"
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 transition-all"
                     size="lg"
                 >
                     {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
-                        <Truck className="w-4 h-4 mr-2" />
+                        <Package className="w-4 h-4 mr-2" />
                     )}
-                    Start Delivery
+                    Mark as Delivered
                 </Button>
             )}
 
-            {currentStatus === "CONFIRMED" && isCustomer && (
+            {(currentStatus === "PAID" || currentStatus === "IN_TRANSIT") && isCustomer && (
                 <div className="text-center py-2 text-zinc-400 text-sm">
-                    Waiting for traveler to start delivery...
+                    Waiting for traveler to mark delivery complete...
                 </div>
             )}
 
-            {currentStatus === "IN_PROGRESS" && isCustomer && (
+            {currentStatus === "DELIVERED" && isCustomer && (
                 <Button
-                    onClick={handleCompleteDelivery}
+                    onClick={handleConfirmDelivery}
                     disabled={isLoading}
                     className="w-full bg-green-600 hover:bg-green-500 shadow-lg shadow-green-500/20 transition-all"
                     size="lg"
@@ -148,14 +159,14 @@ export function DeliveryStatusWidget({
                     ) : (
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                     )}
-                    Confirm Delivery Received
+                    Confirm Receipt & Release Payment
                 </Button>
             )}
 
-            {currentStatus === "IN_PROGRESS" && isTraveler && (
-                <div className="text-center py-2 text-amber-400 text-sm font-medium flex items-center justify-center gap-2">
-                    <Truck className="w-4 h-4" />
-                    Package in transit...
+            {currentStatus === "DELIVERED" && isTraveler && (
+                <div className="text-center py-2 text-cyan-400 text-sm font-medium flex items-center justify-center gap-2">
+                    <Package className="w-4 h-4" />
+                    Waiting for customer to confirm...
                 </div>
             )}
 

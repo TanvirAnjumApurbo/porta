@@ -2,7 +2,7 @@ import { Plane, Calendar, Package, ArrowRight, Bus, Clock, MapPin, Terminal, Doo
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ContactTravelerButton } from "@/components/chat/contact-traveler-button";
+import { TripActionButtons } from "@/components/requests/trip-action-buttons";
 
 interface TripCardProps {
     post: any; // Type flexibility for now
@@ -13,6 +13,11 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
     const isFlight = post.transportMode === 'FLIGHT';
     const depDate = new Date(post.travelDate);
     const arrDate = post.arrivalDate ? new Date(post.arrivalDate) : depDate;
+    
+    // Computed values for TripActionButtons
+    const tripRoute = `${post.departureCity} → ${post.destinationCity}`;
+    const tripDate = depDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const maxWeight = post.remainingWeight ? Math.round(post.remainingWeight / 1000) : (post.numericWeight ? Math.round(post.numericWeight / 1000) : 5);
 
     const formatDate = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
@@ -180,10 +185,13 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                         </div>
                         {!isOwnPost && (
                             <div className="z-10">
-                                <ContactTravelerButton
+                                <TripActionButtons
+                                    travelPostId={post.id}
                                     travelerId={post.userId}
                                     travelerName={post.travelerName || 'Anonymous'}
-                                    travelPostId={post.id}
+                                    tripRoute={tripRoute}
+                                    tripDate={tripDate}
+                                    maxWeight={maxWeight}
                                     postStatus={post.postStatus}
                                 />
                             </div>
@@ -305,10 +313,13 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                     </div>
 
                     {!isOwnPost && (
-                        <ContactTravelerButton
+                        <TripActionButtons
+                            travelPostId={post.id}
                             travelerId={post.userId}
                             travelerName={post.travelerName || 'Anonymous'}
-                            travelPostId={post.id}
+                            tripRoute={tripRoute}
+                            tripDate={tripDate}
+                            maxWeight={maxWeight}
                             postStatus={post.postStatus}
                         />
                     )}

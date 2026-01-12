@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plane, Menu, X, MessageSquare } from "lucide-react";
+import { Plane, Menu, X, MessageSquare, Package, Users } from "lucide-react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -21,17 +22,25 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link href="/requests" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors">
-            Browse Requests
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/travelers" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
+            <Users className="w-4 h-4" />
+            Travelers
           </Link>
-          <Link href="/travelers" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors">
-            Browse Travelers
-          </Link>
+          <SignedIn>
+            <Link href="/requests" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
+              <Package className="w-4 h-4" />
+              My Requests
+            </Link>
+            <Link href="/messages" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4" />
+              Messages
+            </Link>
+          </SignedIn>
         </div>
 
         {/* Auth Buttons & Mobile Menu Toggle */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <SignedOut>
             <SignInButton mode="modal" forceRedirectUrl="/auth-callback">
               <button className="text-sm font-medium hover:text-primary transition-colors hidden sm:block">
@@ -46,17 +55,14 @@ export function Navbar() {
           </SignedOut>
 
           <SignedIn>
-            <Link href="/messages" className="text-sm font-medium mr-2 sm:mr-4 hover:text-primary hidden sm:block">
-              <MessageSquare className="w-4 h-4 inline-block mr-1" />
-              Messages
-            </Link>
-            <Link href="/dashboard" className="text-sm font-medium mr-2 sm:mr-4 hover:text-primary hidden sm:block">
-              Dashboard
-            </Link>
+            {/* Notification Bell */}
+            <NotificationBell />
+            
+            {/* User Button */}
             <UserButton
               appearance={{
                 elements: {
-                  avatarBox: "w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-primary/20"
+                  avatarBox: "w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-primary/20"
                 }
               }}
             />
@@ -76,42 +82,51 @@ export function Navbar() {
       {/* Mobile Menu */}
       <div className={cn(
         "md:hidden absolute top-16 left-0 right-0 bg-[var(--background)] border-b border-white/10 transition-all duration-300 overflow-hidden",
-        isMobileOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+        isMobileOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="px-4 py-4 space-y-2">
           <Link
-            href="/requests"
-            className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
-            onClick={() => setIsMobileOpen(false)}
-          >
-            Browse Requests
-          </Link>
-          <Link
             href="/travelers"
-            className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
             onClick={() => setIsMobileOpen(false)}
           >
+            <Users className="w-4 h-4" />
             Browse Travelers
           </Link>
           <SignedIn>
             <Link
-              href="/messages"
-              className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors sm:hidden"
+              href="/requests"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
               onClick={() => setIsMobileOpen(false)}
             >
-              <MessageSquare className="w-4 h-4 inline-block mr-2" />
+              <Package className="w-4 h-4" />
+              My Requests
+            </Link>
+            <Link
+              href="/messages"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+              onClick={() => setIsMobileOpen(false)}
+            >
+              <MessageSquare className="w-4 h-4" />
               Messages
             </Link>
             <Link
+              href="/notifications"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+              onClick={() => setIsMobileOpen(false)}
+            >
+              Notifications
+            </Link>
+            <Link
               href="/dashboard"
-              className="block px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors sm:hidden"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
               onClick={() => setIsMobileOpen(false)}
             >
               Dashboard
             </Link>
           </SignedIn>
           <SignedOut>
-            <div className="sm:hidden pt-2 border-t border-white/10">
+            <div className="pt-2 border-t border-white/10">
               <SignInButton mode="modal" forceRedirectUrl="/auth-callback">
                 <button
                   className="block w-full px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors text-left"

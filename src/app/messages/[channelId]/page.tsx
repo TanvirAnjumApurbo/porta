@@ -12,9 +12,13 @@ import {
 } from "stream-chat-react";
 import { Channel as StreamChannel } from "stream-chat";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, Package, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+
+import { DeliveryStatusWidget } from "@/components/chat/delivery-status-widget";
+import { getDeliveryRequest } from "@/server/actions/delivery";
 
 interface ChatPageProps {
     params: Promise<{
@@ -22,14 +26,9 @@ interface ChatPageProps {
     }>;
 }
 
-import { DealWidget } from "@/components/chat/deal-widget";
-import { DeliveryStatusWidget } from "@/components/chat/delivery-status-widget";
-import { getActiveDeal, getDeliveryRequest } from "@/server/actions/delivery";
-
 export default function ChatPage({ params }: ChatPageProps) {
     const [channelId, setChannelId] = useState<string | null>(null);
     const [channel, setChannel] = useState<StreamChannel | null>(null);
-    const [activeDeal, setActiveDeal] = useState<any>(null);
     const [deliveryRequest, setDeliveryRequest] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { client } = useChatClient();
@@ -51,14 +50,10 @@ export default function ChatPage({ params }: ChatPageProps) {
                 await chatChannel.watch();
                 setChannel(chatChannel);
 
-                // Fetch Active Deal and Delivery Request if ID exists
+                // Fetch Delivery Request if ID exists (for delivery channels)
                 const customData = chatChannel.data as any;
                 if (customData?.delivery_request_id) {
-                    const [deal, request] = await Promise.all([
-                        getActiveDeal(customData.delivery_request_id),
-                        getDeliveryRequest(customData.delivery_request_id)
-                    ]);
-                    if (deal) setActiveDeal(deal);
+                    const request = await getDeliveryRequest(customData.delivery_request_id);
                     if (request) setDeliveryRequest(request);
                 }
 
@@ -99,6 +94,10 @@ export default function ChatPage({ params }: ChatPageProps) {
         );
     }
 
+    const isDeliveryChannel = channelId?.startsWith("delivery_");
+    const isTraveler = deliveryRequest && user?.id === deliveryRequest.travellerId;
+    const isCustomer = deliveryRequest && user?.id === deliveryRequest.customerId;
+
     return (
         <div className="h-full flex flex-col">
             {/* Back Button for Mobile */}
@@ -118,7 +117,6 @@ export default function ChatPage({ params }: ChatPageProps) {
                     <div className="p-4 border-b border-white/5">
                         <h2 className="font-semibold">Messages</h2>
                     </div>
-                    {/* Channel list would go here - simplified for now */}
                     <Link
                         href="/messages"
                         className="block p-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
@@ -132,26 +130,58 @@ export default function ChatPage({ params }: ChatPageProps) {
                     <Channel channel={channel}>
                         <Window>
                             <ChannelHeader />
-                            {/* Deal Widget Area */}
-                            <div className="px-4 pt-4 space-y-3">
-                                <DealWidget
-                                    channel={channel}
-                                    travelerId={(channel.data as any)?.created_by?.id as string}
-                                    deliveryRequestId={(channel.data as any)?.delivery_request_id as string}
-                                    activeDeal={activeDeal}
-                                />
-                                {/* Show Delivery Status after deal is accepted */}
-                                {deliveryRequest && (deliveryRequest.status === "CONFIRMED" || deliveryRequest.status === "IN_PROGRESS" || deliveryRequest.status === "COMPLETED") && (
-                                    <DeliveryStatusWidget
-                                        requestId={deliveryRequest.id}
-                                        status={deliveryRequest.status}
-                                        isTraveler={user?.id === deliveryRequest.travellerId}
-                                        isCustomer={user?.id === deliveryRequest.customerId}
-                                    />
-                                )}
-                            </div>
+                            
+                            {/* Delivery Request Info Banner */}
+                            {isDeliveryChannel && deliveryRequest && (
+                                <div className="px-4 pt-4 space-y-3">
+                                    {/* Request Summary Banner */}
+                                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-primary/10 rounded-lg">
+                                                    <Package className="w-5 h-5 text-primary" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-zinc-200">
+                                                        {deliveryRequest.travelPost?.departureCity} → {deliveryRequest.travelPost?.destinationCity}
+                                                    </p>
+                                                    <p className="text-xs text-zinc-500">
+                                                        {(deliveryRequest.offeredWeight / 1000).toFixed(1)}kg • ${(deliveryRequest.offeredPrice / 100).toFixed(2)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-zinc-700 text-zinc-400 hover:text-white"
+                                                onClick={() => router.push(`/requests/${deliveryRequest.id}`)}
+                                            >
+                                                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                                                Details
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Delivery Status Widget */}
+                                    {["PAID", "IN_TRANSIT", "DELIVERED", "CONFIRMED", "COMPLETED"].includes(deliveryRequest.status) && (
+                                        <DeliveryStatusWidget
+                                            requestId={deliveryRequest.id}
+                                            status={deliveryRequest.status}
+                                            isTraveler={isTraveler}
+                                            isCustomer={isCustomer}
+                                        />
+                                    )}
+                                </div>
+                            )}
+
                             <MessageList />
-                            <MessageInput />
+                            {deliveryRequest?.status === "COMPLETED" ? (
+                                <div className="p-4 text-center text-zinc-500 text-sm border-t border-zinc-800">
+                                    This conversation has been closed.
+                                </div>
+                            ) : (
+                                <MessageInput />
+                            )}
                         </Window>
                         <Thread />
                     </Channel>

@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, pgEnum, date, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, pgEnum, date, integer, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const verificationStatusEnum = pgEnum("verification_status", [
@@ -14,21 +14,53 @@ export const idTypeEnum = pgEnum("id_type", [
   "DRIVING_LICENSE",
 ]);
 
+// Updated delivery request status flow:
+// REQUESTED → ACCEPTED → PAID → IN_TRANSIT → DELIVERED → CONFIRMED → COMPLETED
+// Also: REJECTED, CANCELLED
 export const deliveryRequestStatusEnum = pgEnum("delivery_request_status", [
-  "REQUESTED",
-  "NEGOTIATING",
-  "CONFIRMED",
-  "LOCKED", // Locked for negotiation
-  "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED",
-  "REJECTED"
+  "REQUESTED",   // Shopper sent request, waiting for traveler
+  "ACCEPTED",    // Traveler accepted, waiting for payment
+  "PAID",        // Shopper paid, money in escrow
+  "IN_TRANSIT",  // Traveler started delivery
+  "DELIVERED",   // Traveler marked as delivered
+  "CONFIRMED",   // Shopper confirmed receipt
+  "COMPLETED",   // Transaction complete, money released
+  "REJECTED",    // Traveler rejected request
+  "CANCELLED",   // Either party cancelled
 ]);
 
-export const dealStatusEnum = pgEnum("deal_status", [
-  "PROPOSED",
-  "COUNTERED",
-  "ACCEPTED",
+// Transaction status for payment tracking
+export const transactionStatusEnum = pgEnum("transaction_status", [
+  "PENDING",   // Payment initiated
+  "HELD",      // Money in escrow
+  "RELEASED",  // Money released to traveler
+  "REFUNDED",  // Money refunded to shopper
+]);
+
+// Notification types
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "REQUEST_RECEIVED",
+  "REQUEST_ACCEPTED",
+  "REQUEST_REJECTED",
+  "PAYMENT_RECEIVED",
+  "DELIVERY_STARTED",
+  "DELIVERY_MARKED",
+  "DELIVERY_CONFIRMED",
+  "PAYMENT_RELEASED",
+  "NEW_MESSAGE",
+]);
+
+// Activity log action types
+export const activityActionEnum = pgEnum("activity_action", [
+  "REQUEST_SENT",
+  "REQUEST_ACCEPTED",
+  "REQUEST_REJECTED",
+  "PAYMENT_MADE",
+  "DELIVERY_STARTED",
+  "DELIVERY_MARKED",
+  "DELIVERY_CONFIRMED",
+  "PAYMENT_RELEASED",
+  "REQUEST_CANCELLED",
 ]);
 
 export const travelPostStatusEnum = pgEnum("travel_post_status", [
@@ -136,25 +168,64 @@ export const deliveryRequests = pgTable("delivery_requests", {
   travellerId: text("traveller_id").notNull().references(() => users.id),
   customerId: text("customer_id").notNull().references(() => users.id),
   status: deliveryRequestStatusEnum("status").default("REQUESTED").notNull(),
+  
+  // Request details - what shopper wants to send
+  packageDescription: text("package_description").notNull(),
+  offeredPrice: integer("offered_price").notNull(), // Price in cents
+  offeredWeight: integer("offered_weight").notNull(), // Weight in grams
+  currency: text("currency").default("USD").notNull(),
+  message: text("message"), // Optional message to traveler
+  
+  // Rejection reason (if rejected)
+  rejectionReason: text("rejection_reason"),
+  
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const dealTerms = pgTable("deal_terms", {
+// Transactions table for payment/escrow tracking
+export const transactions = pgTable("transactions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   deliveryRequestId: text("delivery_request_id").notNull().references(() => deliveryRequests.id),
-
-  proposedPrice: integer("proposed_price").notNull(), // Price in smallest unit (e.g., cents)
+  
+  amount: integer("amount").notNull(), // Amount in cents
   currency: text("currency").default("USD").notNull(),
-
-  weight: integer("weight").notNull(), // Weight in grams
-
-  proposedBy: text("proposed_by").notNull().references(() => users.id),
-  status: dealStatusEnum("status").default("PROPOSED").notNull(),
-
+  status: transactionStatusEnum("status").default("PENDING").notNull(),
+  
+  paidAt: timestamp("paid_at"),
+  releasedAt: timestamp("released_at"),
+  refundedAt: timestamp("refunded_at"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id),
+  
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  
+  relatedRequestId: text("related_request_id").references(() => deliveryRequests.id),
+  
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Activity logs for tracking all actions on a request
+export const activityLogs = pgTable("activity_logs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  deliveryRequestId: text("delivery_request_id").notNull().references(() => deliveryRequests.id),
+  
+  action: activityActionEnum("action").notNull(),
+  performedBy: text("performed_by").notNull().references(() => users.id),
+  metadata: jsonb("metadata"), // Extra details as JSON
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const travelPostRelations = relations(travelPosts, ({ one, many }) => ({
@@ -180,16 +251,38 @@ export const deliveryRequestRelations = relations(deliveryRequests, ({ one, many
     references: [users.id],
     relationName: "customer",
   }),
-  dealTerms: many(dealTerms),
+  transaction: one(transactions, {
+    fields: [deliveryRequests.id],
+    references: [transactions.deliveryRequestId],
+  }),
+  activityLogs: many(activityLogs),
 }));
 
-export const dealTermsRelations = relations(dealTerms, ({ one }) => ({
+export const transactionRelations = relations(transactions, ({ one }) => ({
   deliveryRequest: one(deliveryRequests, {
-    fields: [dealTerms.deliveryRequestId],
+    fields: [transactions.deliveryRequestId],
     references: [deliveryRequests.id],
   }),
-  proposer: one(users, {
-    fields: [dealTerms.proposedBy],
+}));
+
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  relatedRequest: one(deliveryRequests, {
+    fields: [notifications.relatedRequestId],
+    references: [deliveryRequests.id],
+  }),
+}));
+
+export const activityLogRelations = relations(activityLogs, ({ one }) => ({
+  deliveryRequest: one(deliveryRequests, {
+    fields: [activityLogs.deliveryRequestId],
+    references: [deliveryRequests.id],
+  }),
+  performer: one(users, {
+    fields: [activityLogs.performedBy],
     references: [users.id],
   }),
 }));
