@@ -1,80 +1,98 @@
 import Link from "next/link";
-import { ArrowRight, Package } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, ChevronDown } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
+    <section className="relative min-h-screen flex items-center overflow-hidden">
+      {/* Background Image with Ken Burns Effect */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/wing-airplane-with-city-background.jpg"
+          alt="Global logistics - airplane wing with city background"
+          fill
+          className="object-cover animate-kenburns"
+          priority
+          quality={90}
+        />
+        {/* Dark Overlay Gradients - Reduced opacity on left to show more image */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c]/80 via-[#0a0a0c]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-[#0a0a0c]/30" />
+      </div>
       
       {/* Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none opacity-50" />
+      <div className="absolute top-1/4 left-10 w-[600px] h-[300px] bg-primary/20 blur-[150px] rounded-full pointer-events-none opacity-60" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[200px] bg-cyan-500/15 blur-[120px] rounded-full pointer-events-none opacity-50" />
       
-      <div className="max-w-7xl mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center">
-        
-        {/* Left Content */}
-        <div className="flex flex-col gap-6 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 w-fit mx-auto md:mx-0">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-medium text-zinc-400">Live: 1,204 Travelers Airborne</span>
-          </div>
-          
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1]">
-            Global Logistics <br /> 
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-cyan-400">
-              In Your Luggage.
-            </span>
+      {/* Content Container - Aligned more to the left */}
+      <div className="w-full px-6 md:px-12 lg:px-20 relative z-10 pt-20">
+        <div className="max-w-3xl">
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05] mb-6 animate-fade-in-up">
+            Global Logistics{" "}
+            <br className="hidden sm:block" />
+            <span className="gradient-text">In Your Luggage</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-zinc-400 max-w-lg mx-auto md:mx-0">
-            Send items faster and cheaper with travelers already flying there. Monetize your extra bag space securely.
+          {/* Subheadline */}
+          <p className="text-lg md:text-xl lg:text-2xl text-zinc-300 max-w-xl mb-10 animate-fade-in-up animate-delay-100 font-medium drop-shadow-md">
+            Send items faster and cheaper with travelers already flying there. 
+            Monetize your extra bag space securely.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 justify-center md:justify-start">
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-start gap-4 animate-fade-in-up animate-delay-200">
             <Link 
               href="/requests/new"
-              className="w-full sm:w-auto px-8 py-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_-5px_var(--primary)]"
+              className="group w-full sm:w-auto px-8 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_-10px_var(--primary)] hover:shadow-[0_0_60px_-10px_var(--primary)] hover:-translate-y-0.5"
             >
-              Post a Request <ArrowRight className="w-4 h-4" />
+              Post a Request 
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link 
               href="/travel"
-              className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-medium rounded-lg transition-all"
+              className="w-full sm:w-auto px-8 py-4 bg-white/10 border border-white/20 hover:bg-white/20 text-white font-semibold rounded-xl transition-all backdrop-blur-md hover:-translate-y-0.5 shadow-lg flex items-center justify-center"
             >
               I'm Traveling
             </Link>
           </div>
 
-          {/* Mini Trust Signals */}
-          <div className="flex items-center gap-6 justify-center md:justify-start pt-8 opacity-70">
+          {/* Trust Signals */}
+          <div className="flex flex-wrap items-center gap-6 mt-12 animate-fade-in-up animate-delay-300">
             <div className="flex -space-x-3">
-              {[1,2,3].map(i => (
-                <div key={i} className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-900" />
-              ))}
+              <img 
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"
+                alt="User"
+                className="w-10 h-10 rounded-full border-2 border-[#0a0a0c] object-cover"
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face"
+                alt="User"
+                className="w-10 h-10 rounded-full border-2 border-[#0a0a0c] object-cover"
+              />
+              <img 
+                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
+                alt="User"
+                className="w-10 h-10 rounded-full border-2 border-[#0a0a0c] object-cover"
+              />
             </div>
-            <p className="text-sm text-zinc-500">Trusted by 10k+ users</p>
+            <div className="text-sm shadow-black/50 drop-shadow-md">
+              <span className="text-white font-semibold">10,000+</span>
+              <span className="text-zinc-200"> trusted users worldwide</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Visual (Abstract Representation) */}
-        <div className="relative hidden md:block">
-          <div className="relative w-full h-[500px] animate-float">
-            {/* Main Card (Abstract Luggage/Package) */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-96 glass-card rounded-2xl flex flex-col items-center justify-center border border-white/10 z-20">
-               <Package className="w-24 h-24 text-primary mb-6 opacity-80" />
-               <div className="w-48 h-2 bg-white/10 rounded-full mb-3" />
-               <div className="w-32 h-2 bg-white/10 rounded-full" />
-               
-               {/* Floating Badge */}
-               <div className="absolute -right-6 top-10 glass px-4 py-2 rounded-lg text-sm font-semibold text-green-400 border border-green-500/30">
-                 Saved $120
-               </div>
-            </div>
-
-            {/* Orbiting Elements */}
-            <div className="absolute top-10 right-10 w-20 h-20 bg-indigo-500/20 blur-xl rounded-full" />
-            <div className="absolute bottom-10 left-10 w-32 h-32 bg-cyan-500/20 blur-xl rounded-full" />
-          </div>
-        </div>
-
+      {/* Scroll Indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-fade-in-up animate-delay-400">
+        <a 
+          href="#how-it-works" 
+          className="flex flex-col items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
+        >
+          <span className="text-xs uppercase tracking-widest drop-shadow-md">Scroll</span>
+          <ChevronDown className="w-5 h-5 animate-bounce drop-shadow-md" />
+        </a>
       </div>
     </section>
   );

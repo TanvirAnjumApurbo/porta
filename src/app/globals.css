@@ -109,6 +109,105 @@ body {
   animation: float 6s ease-in-out infinite;
 }
 
+/* Ken Burns Effect */
+@keyframes kenburns {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.1) translate(-1%, -1%); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+
+@utility animate-kenburns {
+  animation: kenburns 20s ease-in-out infinite;
+}
+
+/* Fade In Up Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Stagger delay utilities */
+@utility animate-delay-100 { animation-delay: 100ms; }
+@utility animate-delay-200 { animation-delay: 200ms; }
+@utility animate-delay-300 { animation-delay: 300ms; }
+@utility animate-delay-400 { animation-delay: 400ms; }
+@utility animate-delay-500 { animation-delay: 500ms; }
+@utility animate-delay-600 { animation-delay: 600ms; }
+
+/* Slide In Animations */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@utility animate-slide-left {
+  animation: slideInLeft 0.8s ease-out forwards;
+}
+
+@utility animate-slide-right {
+  animation: slideInRight 0.8s ease-out forwards;
+}
+
+/* Parallax container */
+@utility parallax-container {
+  perspective: 1000px;
+  overflow-x: hidden;
+}
+
+/* Scale on Hover */
+@utility hover-scale {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  &:hover {
+    transform: scale(1.05);
+  }
+}
+
+/* Gradient Text */
+@utility gradient-text {
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 50%, #4f46e5 100%);
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 5s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Pulse glow effect */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(79, 70, 229, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(79, 70, 229, 0.6); }
+}
+
+@utility animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Count up animation helper */
+@utility counter-animate {
+  font-variant-numeric: tabular-nums;
+}
+
 /* intl-tel-input overrides for dark theme */
 .iti {
   width: 100%;
