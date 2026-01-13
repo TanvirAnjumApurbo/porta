@@ -41,7 +41,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     return (
         <main className="min-h-screen bg-[var(--background)]">
             <Navbar />
-            <div className="pt-24 px-6 max-w-4xl mx-auto pb-12">
+            <div className="pt-24 px-4 sm:px-6 max-w-4xl mx-auto pb-12">
                 {/* Profile Header */}
                 <ProfileHeader 
                     profile={profile} 

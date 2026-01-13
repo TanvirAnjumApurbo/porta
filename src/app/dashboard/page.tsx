@@ -10,8 +10,8 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       <Navbar />
-      <div className="pt-24 px-6 max-w-7xl mx-auto pb-12">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <div className="pt-24 px-4 sm:px-6 max-w-7xl mx-auto pb-12">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Dashboard</h1>
         
         {/* Payment Setup for Travelers */}
         <div className="mb-8">

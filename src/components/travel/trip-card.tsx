@@ -48,7 +48,7 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                 <div className="glass-card p-4 sm:p-6 rounded-xl hover:border-primary/50 transition-colors cursor-pointer group h-full flex flex-col relative overflow-hidden">
                     {/* Int'l / Domestic Badge */}
                     {post.travelType === 'INTERNATIONAL' ? (
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
+                        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-wrap items-center justify-end gap-1 sm:gap-2 max-w-[60%] sm:max-w-none">
                             {post.postStatus === 'LOCKED' ? (
                                 <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
                                     <Lock className="w-2.5 h-2.5" />Fully Booked
@@ -61,7 +61,7 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
                             <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full border border-purple-500/20">International</span>
                         </div>
                     ) : (
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
+                        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-wrap items-center justify-end gap-1 sm:gap-2 max-w-[60%] sm:max-w-none">
                             {post.postStatus === 'LOCKED' ? (
                                 <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
                                     <Lock className="w-2.5 h-2.5" />Fully Booked

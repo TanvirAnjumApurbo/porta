@@ -28,10 +28,10 @@ export default async function TravelPage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       <Navbar />
-      <div className="pt-24 px-6 max-w-2xl mx-auto pb-12">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">I am Traveling</h1>
-          <p className="text-zinc-400">Monetize your extra luggage space.</p>
+      <div className="pt-24 px-4 sm:px-6 max-w-2xl mx-auto pb-12">
+        <div className="mb-6 sm:mb-8 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">I am Traveling</h1>
+          <p className="text-zinc-400 text-sm sm:text-base">Monetize your extra luggage space.</p>
         </div>
 
         <div className="glass-card p-6 sm:p-8 rounded-2xl border border-white/10">

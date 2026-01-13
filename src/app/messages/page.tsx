@@ -40,8 +40,8 @@ export default function MessagesPage() {
 
     return (
         <div className="h-full flex">
-            {/* Channel List Sidebar */}
-            <div className="w-full max-w-sm border-r border-white/5 flex flex-col">
+            {/* Channel List Sidebar - full width on mobile, max-w-sm on desktop */}
+            <div className="w-full md:w-80 lg:max-w-sm border-r border-white/5 flex flex-col">
                 <div className="p-4 border-b border-white/5">
                     <h1 className="text-xl font-bold">Messages</h1>
                     <p className="text-sm text-zinc-500">Your conversations</p>
@@ -88,14 +88,23 @@ export default function MessagesPage() {
                                 <p className="text-zinc-600 text-xs mt-1">
                                     Conversations will appear here after a request is accepted and paid
                                 </p>
+                                {/* Mobile-only browse buttons */}
+                                <div className="mt-4 flex flex-col gap-2 md:hidden">
+                                    <Button variant="outline" asChild className="border-zinc-700 w-full">
+                                        <Link href="/travelers">Browse Travelers</Link>
+                                    </Button>
+                                    <Button asChild className="w-full">
+                                        <Link href="/requests">My Requests</Link>
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     />
                 </div>
             </div>
 
-            {/* Empty State - Select a conversation */}
-            <div className="flex-1 flex items-center justify-center bg-zinc-950/50">
+            {/* Empty State - Select a conversation (hidden on mobile) */}
+            <div className="hidden md:flex flex-1 items-center justify-center bg-zinc-950/50">
                 <div className="text-center max-w-md px-4">
                     <MessageSquare className="w-16 h-16 text-zinc-800 mx-auto mb-4" />
                     <h2 className="text-xl font-semibold text-zinc-400 mb-2">
