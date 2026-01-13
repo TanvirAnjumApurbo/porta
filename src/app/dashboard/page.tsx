@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/navbar";
 import { getMyTravelPosts } from "@/server/actions/travel";
 import { TripCard } from "@/components/travel/trip-card";
+import { StripeConnectSetup } from "@/components/stripe/stripe-connect-setup";
 import { Plane } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -9,9 +10,14 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-[var(--background)]">
       <Navbar />
-      <div className="pt-24 px-6 max-w-7xl mx-auto pb-12">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <div className="pt-24 px-4 sm:px-6 max-w-7xl mx-auto pb-12">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Dashboard</h1>
         
+        {/* Payment Setup for Travelers */}
+        <div className="mb-8">
+          <StripeConnectSetup />
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6">
           {/* Active Requests (Placeholder for now) */}
           <div className="p-6 glass-card rounded-xl h-fit">
@@ -42,3 +48,4 @@ export default async function DashboardPage() {
     </main>
   );
 }
+

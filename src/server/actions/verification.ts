@@ -125,3 +125,18 @@ export async function getPendingVerifications() {
 
   return pendingUsers;
 }
+
+export async function getUserVerificationStatusClient(): Promise<{ isVerified: boolean } | null> {
+  const { userId } = await auth();
+  if (!userId) return null;
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.clerkId, userId),
+    columns: {
+      isVerified: true,
+    },
+  });
+
+  if (!user) return { isVerified: false };
+  return { isVerified: user.isVerified };
+}
