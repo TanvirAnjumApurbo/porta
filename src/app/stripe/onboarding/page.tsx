@@ -36,7 +36,6 @@ export default function StripeOnboardingPage() {
               colorText: "#ffffff",
             },
             overlays: "dialog",
-            theme: "boreal", // or 'night' if available, trying boreal as default
           },
         });
 
