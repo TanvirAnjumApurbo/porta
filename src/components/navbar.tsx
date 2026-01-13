@@ -18,11 +18,17 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/10 glass">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
-            <Plane className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative w-10 h-10 sm:w-12 sm:h-12 group-hover:scale-110 transition-transform duration-300">
+            <img 
+              src="/icon.svg" 
+              alt="porta" 
+              className="w-full h-full object-contain"
+            />
           </div>
-          <span className="text-lg sm:text-xl font-bold tracking-tight">Porta</span>
+          <span className="text-xl sm:text-2xl font-bold tracking-tight font-[family-name:var(--font-inter)]">
+            porta
+          </span>
         </Link>
 
         {/* Desktop Links */}
