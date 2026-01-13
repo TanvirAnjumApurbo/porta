@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Lock, Clock, CheckCircle, Eye, Loader2 } from "lucide-react";
+import { MessageCircle, Send, Lock, Clock, CheckCircle, Eye, Loader2, ShieldAlert } from "lucide-react";
 import { SendRequestModal } from "./send-request-modal";
 import { checkDeliveryRequestStatus, getOrCreateChatChannel } from "@/server/actions/delivery";
+import { getUserVerificationStatusClient } from "@/server/actions/verification";
 
 interface TripActionButtonsProps {
     travelPostId: string;
@@ -33,16 +34,17 @@ export function TripActionButtons({
     postStatus = "OPEN",
 }: TripActionButtonsProps) {
     const router = useRouter();
-    const { isSignedIn, user } = useUser();
+    const { isSignedIn, user, isLoaded } = useUser();
     const [requestState, setRequestState] = useState<RequestState>({ status: "IDLE" });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+    const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
     // Don't show buttons if user is the traveler
-    const isOwnTrip = isSignedIn && user?.id === travelerId;
+    const isOwnTrip = isLoaded && isSignedIn && user?.id === travelerId;
 
-    // Check request status on mount
+    // Check request status and verification status on mount
     useEffect(() => {
         if (!isSignedIn || isOwnTrip) {
             setIsCheckingStatus(false);
@@ -51,6 +53,11 @@ export function TripActionButtons({
 
         const checkStatus = async () => {
             try {
+                // Check verification status
+                const verificationResult = await getUserVerificationStatusClient();
+                setIsVerified(verificationResult?.isVerified ?? false);
+
+                // Check request status
                 const result = await checkDeliveryRequestStatus(travelPostId);
                 if (result) {
                     setRequestState({
@@ -59,7 +66,7 @@ export function TripActionButtons({
                     });
                 }
             } catch (error) {
-                console.error("Error checking request status:", error);
+                console.error("Error checking status:", error);
             } finally {
                 setIsCheckingStatus(false);
             }
@@ -108,8 +115,8 @@ export function TripActionButtons({
         return null;
     }
 
-    // Show loading state
-    if (isCheckingStatus) {
+    // Show loading state while checking status OR while user data is loading OR while verification status is unknown for signed-in users
+    if (!isLoaded || isCheckingStatus || (isSignedIn && isVerified === null)) {
         return (
             <div className="flex items-center gap-2">
                 <div className="h-9 w-20 bg-zinc-800 animate-pulse rounded-md" />
@@ -143,6 +150,40 @@ export function TripActionButtons({
                         Send Request
                     </Button>
                 </SignInButton>
+            </div>
+        );
+    }
+
+    // Signed in but not verified - show verification required button
+    if (isSignedIn && isVerified === false) {
+        const handleVerifyClick = () => {
+            // Find the verification card by ID and click its button
+            const verifyButton = document.querySelector('#verification-prompt button') as HTMLButtonElement;
+            if (verifyButton) {
+                verifyButton.click();
+            } else {
+                // Fallback: alert the user
+                alert("Please complete your identity verification using the card at the bottom of the screen.");
+            }
+        };
+
+        return (
+            <div 
+                className="flex items-center"
+                onClickCapture={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleVerifyClick();
+                }}
+            >
+                <Button
+                    size="sm"
+                    type="button"
+                    className="bg-primary hover:bg-primary/90"
+                >
+                    <ShieldAlert className="w-4 h-4 mr-1.5" />
+                    Get Verified to Continue
+                </Button>
             </div>
         );
     }

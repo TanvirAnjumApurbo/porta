@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plane, Menu, X, MessageSquare, Package, Users } from "lucide-react";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { Plane, Menu, X, MessageSquare, Package, Users, User } from "lucide-react";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
+import { useChatClient } from "@/components/chat/chat-provider";
+
 export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { unreadCount } = useChatClient();
+  const { user } = useUser();
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/10 glass">
@@ -30,11 +34,16 @@ export function Navbar() {
           <SignedIn>
             <Link href="/requests" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
               <Package className="w-4 h-4" />
-              My Requests
+              Orders & Deliveries
             </Link>
-            <Link href="/messages" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
+            <Link href="/messages" className="text-sm font-medium text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 relative">
               <MessageSquare className="w-4 h-4" />
               Messages
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 border border-[var(--background)]">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           </SignedIn>
         </div>
@@ -55,6 +64,17 @@ export function Navbar() {
           </SignedOut>
 
           <SignedIn>
+            {/* Profile Button */}
+            {user && (
+              <Link 
+                href={`/profile/${user.id}`}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground hover:text-white"
+                title="My Profile"
+              >
+                <User className="w-5 h-5" />
+              </Link>
+            )}
+
             {/* Notification Bell */}
             <NotificationBell />
             
@@ -100,15 +120,22 @@ export function Navbar() {
               onClick={() => setIsMobileOpen(false)}
             >
               <Package className="w-4 h-4" />
-              My Requests
+              Orders & Deliveries
             </Link>
             <Link
               href="/messages"
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors justify-between"
               onClick={() => setIsMobileOpen(false)}
             >
-              <MessageSquare className="w-4 h-4" />
-              Messages
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Messages
+              </div>
+              {unreadCount > 0 && (
+                <span className="min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/notifications"
@@ -124,6 +151,16 @@ export function Navbar() {
             >
               Dashboard
             </Link>
+            {user && (
+              <Link
+                href={`/profile/${user.id}`}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                <User className="w-4 h-4" />
+                My Profile
+              </Link>
+            )}
           </SignedIn>
           <SignedOut>
             <div className="pt-2 border-t border-white/10">

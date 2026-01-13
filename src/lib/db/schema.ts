@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, pgEnum, date, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, pgEnum, date, integer, jsonb, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const verificationStatusEnum = pgEnum("verification_status", [
@@ -21,6 +21,7 @@ export const deliveryRequestStatusEnum = pgEnum("delivery_request_status", [
   "REQUESTED",   // Shopper sent request, waiting for traveler
   "ACCEPTED",    // Traveler accepted, waiting for payment
   "PAID",        // Shopper paid, money in escrow
+  "PURCHASED",   // Traveler confirmed product purchase (New)
   "IN_TRANSIT",  // Traveler started delivery
   "DELIVERED",   // Traveler marked as delivered
   "CONFIRMED",   // Shopper confirmed receipt
@@ -43,6 +44,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "REQUEST_ACCEPTED",
   "REQUEST_REJECTED",
   "PAYMENT_RECEIVED",
+  "PRODUCT_PURCHASED",
+  "OTP_GENERATED",
   "DELIVERY_STARTED",
   "DELIVERY_MARKED",
   "DELIVERY_CONFIRMED",
@@ -56,6 +59,8 @@ export const activityActionEnum = pgEnum("activity_action", [
   "REQUEST_ACCEPTED",
   "REQUEST_REJECTED",
   "PAYMENT_MADE",
+  "PRODUCT_PURCHASED",
+  "OTP_GENERATED",
   "DELIVERY_STARTED",
   "DELIVERY_MARKED",
   "DELIVERY_CONFIRMED",
@@ -97,6 +102,16 @@ export const users = pgTable("users", {
 
   idImageUrl: text("id_image_url"),
   userPhotoUrl: text("user_photo_url"), // Real photo for verification
+
+  // Stripe Connect fields (for travelers to receive payments)
+  stripeConnectAccountId: text("stripe_connect_account_id"),
+  stripeConnectOnboardingComplete: boolean("stripe_connect_onboarding_complete").default(false).notNull(),
+
+  // Rating and stats (cached for performance)
+  averageRating: real("average_rating").default(0),
+  totalReviews: integer("total_reviews").default(0).notNull(),
+  completedDeliveriesAsTraveler: integer("completed_deliveries_as_traveler").default(0).notNull(),
+  totalEarnings: integer("total_earnings").default(0).notNull(), // in cents
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -179,6 +194,9 @@ export const deliveryRequests = pgTable("delivery_requests", {
   // Rejection reason (if rejected)
   rejectionReason: text("rejection_reason"),
   
+  // OTP for delivery verification
+  deliveryProofOtp: text("delivery_proof_otp"),
+
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -192,6 +210,12 @@ export const transactions = pgTable("transactions", {
   amount: integer("amount").notNull(), // Amount in cents
   currency: text("currency").default("USD").notNull(),
   status: transactionStatusEnum("status").default("PENDING").notNull(),
+  
+  // Stripe payment tracking
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeTransferId: text("stripe_transfer_id"),
+  platformFee: integer("platform_fee"), // Platform fee in cents (5%)
+  travelerPayout: integer("traveler_payout"), // Amount traveler receives in cents
   
   paidAt: timestamp("paid_at"),
   releasedAt: timestamp("released_at"),
@@ -287,3 +311,69 @@ export const activityLogRelations = relations(activityLogs, ({ one }) => ({
   }),
 }));
 
+// Reviews table for traveler ratings
+export const reviews = pgTable("reviews", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  deliveryRequestId: text("delivery_request_id").notNull().references(() => deliveryRequests.id),
+  reviewerId: text("reviewer_id").notNull().references(() => users.id), // customer who writes review
+  revieweeId: text("reviewee_id").notNull().references(() => users.id), // traveler being reviewed
+  
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const reviewRelations = relations(reviews, ({ one }) => ({
+  deliveryRequest: one(deliveryRequests, {
+    fields: [reviews.deliveryRequestId],
+    references: [deliveryRequests.id],
+  }),
+  reviewer: one(users, {
+    fields: [reviews.reviewerId],
+    references: [users.id],
+    relationName: "reviewsGiven",
+  }),
+  reviewee: one(users, {
+    fields: [reviews.revieweeId],
+    references: [users.id],
+    relationName: "reviewsReceived",
+  }),
+}));
+
+// Issue status enum
+export const issueStatusEnum = pgEnum("issue_status", [
+  "OPEN",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "CLOSED",
+]);
+
+// Issue Reports table for dispute/problem reporting
+export const issueReports = pgTable("issue_reports", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  deliveryRequestId: text("delivery_request_id").notNull().references(() => deliveryRequests.id),
+  reporterId: text("reporter_id").notNull().references(() => users.id),
+  reporterRole: text("reporter_role").notNull(), // "CUSTOMER" or "TRAVELER"
+  
+  issueType: text("issue_type").notNull(), // "DELAY", "NO_RESPONSE", "DAMAGED", "FRAUD", "OTHER"
+  description: text("description").notNull(),
+  
+  status: issueStatusEnum("status").default("OPEN").notNull(),
+  adminNotes: text("admin_notes"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const issueReportRelations = relations(issueReports, ({ one }) => ({
+  deliveryRequest: one(deliveryRequests, {
+    fields: [issueReports.deliveryRequestId],
+    references: [deliveryRequests.id],
+  }),
+  reporter: one(users, {
+    fields: [issueReports.reporterId],
+    references: [users.id],
+  }),
+}));

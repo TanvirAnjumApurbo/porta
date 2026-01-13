@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
+import "./stream-chat.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { VerificationChecker } from "@/components/verification/verification-checker";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,6 +23,8 @@ export const metadata: Metadata = {
   description: "Turning empty luggage space into global logistics.",
 };
 
+import { ChatProvider } from "@/components/chat/chat-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,8 +36,11 @@ export default function RootLayout({
         <body
           className={`${inter.variable} ${robotoMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
         >
-          {children}
-          <VerificationChecker />
+          <ChatProvider>
+            {children}
+            <VerificationChecker />
+            <Toaster position="top-center" richColors />
+          </ChatProvider>
         </body>
       </html>
     </ClerkProvider>

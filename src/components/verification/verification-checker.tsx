@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { getVerificationStatus } from "@/server/actions/verification";
+import { syncUser } from "@/server/actions/user";
 import { VerificationModal } from "./verification-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,13 +16,15 @@ export function VerificationChecker() {
   const pathname = usePathname();
   const [status, setStatus] = useState<"IDLE" | "PENDING" | "APPROVED" | "REJECTED" | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [hasChecked, setHasChecked] = useState(false);
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       checkStatus();
-    } else {
-      setLoading(false);
+      syncUser().catch(console.error);
+    } else if (isLoaded && !isSignedIn) {
+      // Not signed in, mark as checked (no need to show verification)
+      setHasChecked(true);
     }
   }, [isLoaded, isSignedIn]);
 
@@ -36,18 +39,20 @@ export function VerificationChecker() {
     } catch (error) {
       console.error("Failed to fetch verification status", error);
     } finally {
-      setLoading(false);
+      setHasChecked(true);
     }
   };
 
   // Don't show on admin routes
   if (pathname.startsWith("/admin")) return null;
-  if (!isLoaded || !isSignedIn || loading) return null;
+  // Don't show until we've checked the status
+  if (!isLoaded || !isSignedIn || !hasChecked) return null;
+  // Don't show for approved users
   if (status === "APPROVED") return null;
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50 w-full max-w-sm animate-in fade-in slide-in-from-bottom-5">
+      <div id="verification-prompt" className="fixed bottom-6 right-6 z-50 w-full max-w-sm animate-in fade-in slide-in-from-bottom-5">
         <Card className="border-white shadow-2xl">
           <CardHeader className="pb-2">
             <div className="flex items-start gap-4">

@@ -197,19 +197,64 @@ export async function getTravelPosts() {
     },
   });
 
+  // Filter out expired posts (arrival time within 1 hour) and posts with no remaining capacity
+  const now = new Date();
+  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+  const validPosts = posts.filter((post) => {
+    // Check capacity: must have remaining weight > 0 and status must be OPEN
+    if (post.remainingWeight !== null && post.remainingWeight <= 0) {
+      return false;
+    }
+    if (post.postStatus !== "OPEN") {
+      return false;
+    }
+
+    // Check time: arrival must be > 1 hour from now
+    if (post.arrivalTime) {
+      try {
+        // arrivalTime can be ISO format or just HH:MM
+        let arrivalDateTime: Date;
+        
+        if (post.arrivalTime.includes('T')) {
+          // ISO format
+          arrivalDateTime = new Date(post.arrivalTime);
+        } else {
+          // HH:MM format - combine with arrivalDate or travelDate
+          const dateStr = post.arrivalDate || post.travelDate;
+          arrivalDateTime = new Date(`${dateStr}T${post.arrivalTime}:00`);
+        }
+
+        if (!isNaN(arrivalDateTime.getTime()) && arrivalDateTime <= oneHourFromNow) {
+          return false; // Post is expiring soon
+        }
+      } catch (e) {
+        // If parsing fails, keep the post visible
+      }
+    }
+
+    return true;
+  });
+
   // Get user info for each post
   const postsWithUser = await Promise.all(
-    posts.map(async (post) => {
+    validPosts.map(async (post) => {
       const postUser = await db.query.users.findFirst({
         where: eq(users.id, post.userId),
         columns: {
           firstName: true,
           lastName: true,
+          averageRating: true,
+          totalReviews: true,
+          userPhotoUrl: true,
         },
       });
       return {
         ...post,
         travelerName: postUser ? `${postUser.firstName || ''} ${postUser.lastName || ''}`.trim() || 'Anonymous' : 'Anonymous',
+        travelerImage: postUser?.userPhotoUrl || null,
+        travelerRating: postUser?.averageRating || 0,
+        travelerReviews: postUser?.totalReviews || 0,
       };
     })
   );

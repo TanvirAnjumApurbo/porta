@@ -17,9 +17,16 @@ import {
     User,
     ArrowRight,
     MessageCircle,
+    MoreVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SentRequestCardProps {
     request: {
@@ -40,6 +47,7 @@ interface SentRequestCardProps {
         traveller: {
             firstName?: string | null;
             lastName?: string | null;
+            userPhotoUrl?: string | null;
         } | null;
     };
 }
@@ -129,12 +137,17 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
         router.push(`/requests/${request.id}`);
     };
 
+    const handleChat = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        router.push(`/messages/delivery_${request.id}`);
+    };
+
     const needsAction = ["ACCEPTED", "DELIVERED"].includes(request.status);
 
     return (
         <div
             className={cn(
-                "bg-zinc-900/50 border rounded-xl p-5 transition-colors cursor-pointer hover:border-zinc-600",
+                "bg-zinc-900/50 border rounded-xl p-5 transition-colors cursor-pointer hover:border-zinc-600 relative group",
                 needsAction ? "border-primary/50 ring-1 ring-primary/20" : "border-zinc-800"
             )}
             onClick={handleViewDetails}
@@ -142,8 +155,12 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
             {/* Header */}
             <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center">
-                        <User className="w-5 h-5 text-zinc-400" />
+                    <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
+                        {request.traveller?.userPhotoUrl ? (
+                            <img src={request.traveller.userPhotoUrl} alt="Traveler" className="w-full h-full object-cover" />
+                        ) : (
+                            <User className="w-5 h-5 text-zinc-400" />
+                        )}
                     </div>
                     <div>
                         <h3 className="font-semibold text-zinc-100">{travelerName}</h3>
@@ -153,15 +170,40 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
                     </div>
                 </div>
 
-                {/* Status Badge */}
-                <div className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-                    config.bgColor,
-                    config.color,
-                    config.borderColor
-                )}>
-                    <StatusIcon className="w-3.5 h-3.5" />
-                    {config.label}
+                <div className="flex items-center gap-2">
+                    {/* Status Badge */}
+                    <div className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+                        config.bgColor,
+                        config.color,
+                        config.borderColor
+                    )}>
+                        <StatusIcon className="w-3.5 h-3.5" />
+                        {config.label}
+                    </div>
+
+                    {/* Menu Button */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 bg-zinc-950 border-zinc-800">
+                            <DropdownMenuItem
+                                onClick={handleChat}
+                                className="text-zinc-300 focus:text-white focus:bg-zinc-900 cursor-pointer"
+                            >
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                Chat with Traveler
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -233,23 +275,6 @@ export function SentRequestCard({ request }: SentRequestCardProps) {
                             Confirm Receipt
                         </Button>
                     )}
-                </div>
-            )}
-
-            {/* Chat Button for active requests */}
-            {["PAID", "IN_TRANSIT", "DELIVERED"].includes(request.status) && (
-                <div className="pt-4 border-t border-zinc-800">
-                    <Button
-                        variant="outline"
-                        className="w-full border-zinc-700"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/messages/delivery_${request.id}`);
-                        }}
-                    >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Open Chat
-                    </Button>
                 </div>
             )}
         </div>

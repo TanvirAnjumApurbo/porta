@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,15 +21,20 @@ import {
     Shield,
     Loader2,
     AlertCircle,
+    ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-    processPayment,
     markDelivered,
     confirmDelivery,
+    markProductPurchased,
 } from "@/server/actions/delivery";
 import { ActivityTimeline } from "./activity-timeline";
+import { ReviewDialog } from "@/components/reviews/review-dialog";
+import { OTPVerificationDialog } from "./otp-verification-dialog";
+import { checkReviewExists } from "@/server/actions/reviews";
+import { ReportIssueDialog } from "./report-issue-dialog";
 
 interface RequestDetailViewProps {
     request: any;
@@ -42,6 +47,7 @@ const statusSteps = [
     { key: "REQUESTED", label: "Requested", icon: Clock },
     { key: "ACCEPTED", label: "Accepted", icon: CheckCircle },
     { key: "PAID", label: "Paid", icon: CreditCard },
+    { key: "PURCHASED", label: "Bought", icon: ShoppingBag },
     { key: "DELIVERED", label: "Delivered", icon: PackageCheck },
     { key: "COMPLETED", label: "Completed", icon: PartyPopper },
 ];
@@ -54,9 +60,23 @@ export function RequestDetailView({
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showReviewDialog, setShowReviewDialog] = useState(false);
+    const [hasReviewed, setHasReviewed] = useState(false);
 
-    // Handle IN_TRANSIT as equivalent to PAID for display purposes (legacy support)
-    const displayStatus = request.status === "IN_TRANSIT" ? "PAID" : request.status;
+    // Check if user already reviewed this delivery
+    useEffect(() => {
+        if (isCustomer && request.status === "COMPLETED") {
+            checkReviewExists(request.id).then(setHasReviewed);
+        }
+    }, [isCustomer, request.id, request.status]);
+
+    // Handle IN_TRANSIT as equivalent to PURCHASED step for display purposes (it comes after purchased)
+    // If status is IN_TRANSIT, it should highlight PURCHASED step as cleared too
+    const getDisplayStatus = (status: string) => {
+        if (status === "IN_TRANSIT") return "PURCHASED";
+        return status;
+    };
+    const displayStatus = getDisplayStatus(request.status);
     const currentStepIndex = statusSteps.findIndex((s) => s.key === displayStatus);
     const isRejected = request.status === "REJECTED";
     const isCancelled = request.status === "CANCELLED";
@@ -70,7 +90,7 @@ export function RequestDetailView({
         ? `${request.customer.firstName || ""} ${request.customer.lastName || ""}`.trim() || "Anonymous"
         : "Anonymous";
 
-    const handleAction = async (action: "pay" | "mark" | "confirm") => {
+    const handleAction = async (action: "pay" | "mark" | "confirm" | "purchase") => {
         setIsLoading(true);
         setError(null);
 
@@ -79,16 +99,34 @@ export function RequestDetailView({
 
             switch (action) {
                 case "pay":
-                    result = await processPayment(request.id);
-                    if (result.success && result.channelId) {
-                        router.push(`/messages/${result.channelId}`);
+                    // Call the checkout API to create a Stripe session
+                    const response = await fetch("/api/stripe/checkout", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ deliveryRequestId: request.id }),
+                    });
+                    const data = await response.json();
+                    
+                    if (data.url) {
+                        // Redirect to Stripe Checkout
+                        window.location.href = data.url;
+                        return;
+                    } else if (data.error) {
+                        setError(data.error);
                     }
+                    break;
+                case "purchase":
+                    result = await markProductPurchased(request.id);
                     break;
                 case "mark":
                     result = await markDelivered(request.id);
                     break;
                 case "confirm":
                     result = await confirmDelivery(request.id);
+                    if (result?.success) {
+                        // Show review dialog after successful confirmation
+                        setShowReviewDialog(true);
+                    }
                     break;
             }
 
@@ -239,10 +277,10 @@ export function RequestDetailView({
 
                             <div className="bg-zinc-800/50 rounded-lg p-4">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <DollarSign className="w-4 h-4 text-green-400" />
+                                    <DollarSign className="w-4 h-4 text-primary" />
                                     <span className="text-xs text-zinc-500 uppercase">Price</span>
                                 </div>
-                                <p className="text-xl font-bold text-green-400">
+                                <p className="text-xl font-bold text-primary">
                                     ${(request.offeredPrice / 100).toFixed(2)}
                                 </p>
                             </div>
@@ -262,8 +300,12 @@ export function RequestDetailView({
                     <div className="bg-zinc-800/50 rounded-lg p-4">
                         <p className="text-xs text-zinc-500 uppercase font-medium mb-2">Traveler</p>
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                                <User className="w-4 h-4 text-zinc-400" />
+                            <div className="w-8 h-8 rounded-full bg-zinc-700 overflow-hidden flex items-center justify-center">
+                                {request.traveller?.userPhotoUrl ? (
+                                    <img src={request.traveller.userPhotoUrl} alt="Traveler" className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="w-4 h-4 text-zinc-400" />
+                                )}
                             </div>
                             <span className="font-medium text-white">{travelerName}</span>
                             {isTraveler && (
@@ -275,8 +317,12 @@ export function RequestDetailView({
                     <div className="bg-zinc-800/50 rounded-lg p-4">
                         <p className="text-xs text-zinc-500 uppercase font-medium mb-2">Customer</p>
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                                <User className="w-4 h-4 text-zinc-400" />
+                            <div className="w-8 h-8 rounded-full bg-zinc-700 overflow-hidden flex items-center justify-center">
+                                {request.customer?.userPhotoUrl ? (
+                                    <img src={request.customer.userPhotoUrl} alt="Customer" className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="w-4 h-4 text-zinc-400" />
+                                )}
                             </div>
                             <span className="font-medium text-white">{customerName}</span>
                             {isCustomer && (
@@ -287,13 +333,13 @@ export function RequestDetailView({
                 </div>
 
                 {/* Payment Status (for traveler) */}
-                {isTraveler && ["PAID", "IN_TRANSIT", "DELIVERED", "CONFIRMED", "COMPLETED"].includes(request.status) && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                {isTraveler && ["PAID", "PURCHASED", "IN_TRANSIT", "DELIVERED", "CONFIRMED", "COMPLETED"].includes(request.status) && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                         <div className="flex items-center gap-3">
-                            <Shield className="w-5 h-5 text-green-400" />
+                            <Shield className="w-5 h-5 text-primary" />
                             <div>
-                                <p className="font-medium text-green-400">Payment Guaranteed</p>
-                                <p className="text-sm text-green-300">
+                                <p className="font-medium text-primary">Payment Guaranteed</p>
+                                <p className="text-sm text-zinc-300">
                                     ${(request.offeredPrice / 100).toFixed(2)} is secured in escrow
                                     {request.status === "COMPLETED" ? " and has been released to you" : " and will be released upon delivery confirmation"}
                                 </p>
@@ -323,6 +369,20 @@ export function RequestDetailView({
                                     Pay ${(request.offeredPrice / 100).toFixed(2)} to confirm your delivery
                                 </p>
                             </div>
+                            <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-400">Delivery Fee</span>
+                                    <span className="text-white">${(request.offeredPrice / 100).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-zinc-500">
+                                    <span>Platform fee (5%)</span>
+                                    <span>-${((request.offeredPrice * 0.05) / 100).toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-zinc-700 pt-2 flex justify-between text-sm">
+                                    <span className="text-zinc-400">Traveler receives</span>
+                                    <span className="text-green-400">${((request.offeredPrice * 0.95) / 100).toFixed(2)}</span>
+                                </div>
+                            </div>
                             <Button
                                 className="w-full bg-green-600 hover:bg-green-500 h-12 text-lg"
                                 onClick={() => handleAction("pay")}
@@ -335,8 +395,9 @@ export function RequestDetailView({
                                 )}
                                 Pay ${(request.offeredPrice / 100).toFixed(2)}
                             </Button>
-                            <p className="text-xs text-zinc-500 text-center">
-                                Demo mode: Click to simulate payment
+                            <p className="text-xs text-zinc-500 text-center flex items-center justify-center gap-1">
+                                <Shield className="w-3 h-3" />
+                                Secure payment via Stripe
                             </p>
                         </div>
                     )}
@@ -364,35 +425,58 @@ export function RequestDetailView({
                         </div>
                     )}
 
-                    {/* Traveler Actions - Single step: Mark as Delivered */}
-                    {isTraveler && (request.status === "PAID" || request.status === "IN_TRANSIT") && (
+                    {/* Traveler Actions */}
+                    {isTraveler && request.status === "PAID" && (
                         <div className="space-y-4">
                             <div className="text-center">
-                                <h3 className="font-semibold text-lg mb-1">Mark as Delivered</h3>
+                                <h3 className="font-semibold text-lg mb-1">Confirm Purchase</h3>
                                 <p className="text-sm text-zinc-400">
-                                    Mark when you've handed over the package to the customer
+                                    Confirm that you have purchased the requested item
                                 </p>
                             </div>
                             <Button
-                                className="w-full bg-cyan-600 hover:bg-cyan-500 h-12 text-lg"
-                                onClick={() => handleAction("mark")}
+                                className="w-full bg-blue-600 hover:bg-blue-500 h-12 text-lg"
+                                onClick={() => handleAction("purchase")}
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                                 ) : (
-                                    <PackageCheck className="w-5 h-5 mr-2" />
+                                    <ShoppingBag className="w-5 h-5 mr-2" />
                                 )}
-                                Mark as Delivered
+                                Confirm Product Purchased
                             </Button>
                         </div>
                     )}
 
+                    {isTraveler && (request.status === "PURCHASED" || request.status === "IN_TRANSIT") && (
+                        <div className="space-y-4">
+                            <div className="text-center">
+                                <h3 className="font-semibold text-lg mb-1">Final Delivery Step</h3>
+                                <p className="text-sm text-zinc-400">
+                                    Meet the customer and ask for the OTP sent to their email.
+                                </p>
+                            </div>
+                            <OTPVerificationDialog requestId={request.id}>
+                                <Button
+                                    className="w-full bg-primary hover:bg-primary/90 h-12 text-lg text-primary-foreground"
+                                >
+                                    <PackageCheck className="w-5 h-5 mr-2" />
+                                    Verify Delivery & Complete
+                                </Button>
+                            </OTPVerificationDialog>
+                        </div>
+                    )}
+
                     {/* Waiting States */}
-                    {isCustomer && (request.status === "PAID" || request.status === "IN_TRANSIT") && (
+                    {isCustomer && (request.status === "PAID" || request.status === "PURCHASED" || request.status === "IN_TRANSIT") && (
                         <div className="text-center py-4">
                             <Package className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-                            <p className="text-zinc-400">Waiting for traveler to complete delivery...</p>
+                            <p className="text-zinc-400">
+                                {request.status === "PAID" 
+                                    ? "Waiting for traveler to purchase product..." 
+                                    : "Waiting for traveler to complete delivery..."}
+                            </p>
                         </div>
                     )}
 
@@ -406,14 +490,27 @@ export function RequestDetailView({
                     {/* Completed State */}
                     {isCompleted && (
                         <div className="text-center py-4">
-                            <PartyPopper className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
-                            <h3 className="font-semibold text-lg text-emerald-400 mb-1">Delivery Complete!</h3>
-                            <p className="text-zinc-400">Thank you for using Porta</p>
+                            <PartyPopper className="w-12 h-12 text-primary mx-auto mb-3" />
+                            <h3 className="font-semibold text-lg text-primary mb-1">Delivery Complete!</h3>
+                            <p className="text-zinc-400 mb-4">Thank you for using Porta</p>
+                            
+                            {/* Leave Review Button for Customer */}
+                            {isCustomer && !hasReviewed && (
+                                <Button
+                                    className="bg-amber-600 hover:bg-amber-500"
+                                    onClick={() => setShowReviewDialog(true)}
+                                >
+                                    ⭐ Leave a Review
+                                </Button>
+                            )}
+                            {isCustomer && hasReviewed && (
+                                <p className="text-sm text-zinc-500">✓ You've reviewed this delivery</p>
+                            )}
                         </div>
                     )}
 
                     {/* Chat Button - Always available after payment */}
-                    {["PAID", "IN_TRANSIT", "DELIVERED", "COMPLETED"].includes(request.status) && (
+                    {["PAID", "PURCHASED", "IN_TRANSIT", "DELIVERED", "COMPLETED"].includes(request.status) && (
                         <Button
                             variant="outline"
                             className="w-full mt-4 border-zinc-700"
@@ -422,6 +519,13 @@ export function RequestDetailView({
                             <MessageCircle className="w-4 h-4 mr-2" />
                             Open Chat
                         </Button>
+                    )}
+
+                    {/* Report Issue Button - Available for active deliveries */}
+                    {!["REQUESTED", "REJECTED", "CANCELLED"].includes(request.status) && (
+                        <div className="mt-4">
+                            <ReportIssueDialog deliveryRequestId={request.id} />
+                        </div>
                     )}
                 </div>
             )}
@@ -435,6 +539,18 @@ export function RequestDetailView({
                     <ActivityTimeline logs={request.activityLogs} />
                 </div>
             )}
+
+            {/* Review Dialog */}
+            <ReviewDialog
+                open={showReviewDialog}
+                onOpenChange={setShowReviewDialog}
+                deliveryRequestId={request.id}
+                travelerName={travelerName}
+                onSuccess={() => {
+                    setHasReviewed(true);
+                    router.refresh();
+                }}
+            />
         </div>
     );
 }
@@ -444,6 +560,7 @@ function StatusBadge({ status }: { status: string }) {
         REQUESTED: { label: "Pending", color: "text-amber-400", bgColor: "bg-amber-500/10" },
         ACCEPTED: { label: "Accepted", color: "text-green-400", bgColor: "bg-green-500/10" },
         PAID: { label: "Paid", color: "text-blue-400", bgColor: "bg-blue-500/10" },
+        PURCHASED: { label: "Purchased", color: "text-indigo-400", bgColor: "bg-indigo-500/10" },
         IN_TRANSIT: { label: "In Transit", color: "text-purple-400", bgColor: "bg-purple-500/10" },
         DELIVERED: { label: "Delivered", color: "text-cyan-400", bgColor: "bg-cyan-500/10" },
         CONFIRMED: { label: "Confirmed", color: "text-green-400", bgColor: "bg-green-500/10" },

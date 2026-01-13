@@ -17,7 +17,7 @@ export default function RequestsPage({
                         <div className="p-2 bg-primary/10 rounded-lg">
                             <Package className="w-6 h-6 text-primary" />
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-bold">My Requests</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold">Orders & Deliveries</h1>
                     </div>
                     <p className="text-zinc-400 text-sm sm:text-base">
                         Manage your delivery requests - incoming and sent

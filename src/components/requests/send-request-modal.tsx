@@ -116,7 +116,11 @@ export function SendRequestModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-lg bg-zinc-950 border-zinc-800 text-zinc-200">
+            <DialogContent 
+                className="sm:max-w-lg bg-zinc-950 border-zinc-800 text-zinc-200"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
                         <Package className="w-5 h-5 text-primary" />

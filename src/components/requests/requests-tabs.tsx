@@ -30,6 +30,12 @@ export function RequestsTabs({ defaultTab }: RequestsTabsProps) {
                 ]);
                 setIncomingRequests(incoming);
                 setSentRequests(sent);
+
+                // Auto-switch tab if Incoming is empty but Sent has data (and user didn't explicitly select Incoming)
+                if (incoming.length === 0 && sent.length > 0 && defaultTab === "incoming") {
+                    setActiveTab("sent");
+                    router.replace("/requests?tab=sent", { scroll: false });
+                }
             } catch (error) {
                 console.error("Error fetching requests:", error);
             } finally {
@@ -69,7 +75,7 @@ export function RequestsTabs({ defaultTab }: RequestsTabsProps) {
                     )}
                 >
                     <Inbox className="w-4 h-4" />
-                    Incoming
+                    Delivery Jobs
                     {incomingRequests.length > 0 && (
                         <span className={cn(
                             "px-1.5 py-0.5 text-xs rounded-full",
@@ -91,7 +97,7 @@ export function RequestsTabs({ defaultTab }: RequestsTabsProps) {
                     )}
                 >
                     <Send className="w-4 h-4" />
-                    Sent
+                    My Orders
                     {sentRequests.length > 0 && (
                         <span className={cn(
                             "px-1.5 py-0.5 text-xs rounded-full",

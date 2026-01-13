@@ -10,11 +10,13 @@ import "stream-chat-react/dist/css/v2/index.css";
 interface ChatContextType {
     client: StreamChat | null;
     isConnecting: boolean;
+    unreadCount: number;
 }
 
 const ChatContext = createContext<ChatContextType>({
     client: null,
     isConnecting: true,
+    unreadCount: 0,
 });
 
 export const useChatClient = () => useContext(ChatContext);
@@ -22,6 +24,7 @@ export const useChatClient = () => useContext(ChatContext);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
     const [client, setClient] = useState<StreamChat | null>(null);
     const [isConnecting, setIsConnecting] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
     const { user, isLoaded, isSignedIn } = useUser();
 
     const initChat = useCallback(async () => {
@@ -56,6 +59,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 token
             );
 
+            const count = (chatClient.user as any)?.total_unread_count || 0;
+            setUnreadCount(count);
+
+            chatClient.on("notification.message_new", (event) => {
+                setUnreadCount((chatClient.user as any)?.total_unread_count || 0);
+            });
+
+            chatClient.on("notification.mark_read", (event) => {
+                setUnreadCount((chatClient.user as any)?.total_unread_count || 0);
+            });
+            
+            // Also listen for general message events if needed, but notifications usually cover it for "me"
+            chatClient.on("message.new", () => {
+                 setUnreadCount((chatClient.user as any)?.total_unread_count || 0);
+            });
+
             setClient(chatClient);
         } catch (error) {
             console.error("Error initializing chat:", error);
@@ -70,31 +89,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return () => {
             if (client) {
                 client.disconnectUser().catch(console.error);
+                setClient(null);
             }
         };
     }, [initChat]);
 
-    if (!isSignedIn) {
-        return <>{children}</>;
-    }
-
-    if (isConnecting) {
-        return (
-            <div className="flex items-center justify-center min-h-[200px]">
-                <div className="animate-pulse text-zinc-500">Connecting to chat...</div>
-            </div>
-        );
-    }
-
-    if (!client) {
-        return <>{children}</>;
-    }
-
     return (
-        <ChatContext.Provider value={{ client, isConnecting }}>
-            <Chat client={client} theme="str-chat__theme-dark">
-                {children}
-            </Chat>
+        <ChatContext.Provider value={{ client, isConnecting, unreadCount }}>
+            {children}
         </ChatContext.Provider>
     );
 }

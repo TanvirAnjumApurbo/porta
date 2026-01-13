@@ -84,6 +84,10 @@
   background: #4338ca !important;
 }
 
+.str-chat__send-button svg path {
+  fill: #ffffff !important;
+}
+
 /* Message Bubbles */
 .str-chat__message-simple {
   font-family: var(--font-inter), system-ui, sans-serif !important;
@@ -100,7 +104,12 @@
 
 .str-chat__message:not(.str-chat__message--me) .str-chat__message-bubble {
   background: #1f2937 !important;
+  color: #ededed !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.str-chat__message:not(.str-chat__message--me) .str-chat__message-text-inner {
+  color: #ededed !important;
 }
 
 /* Message List */

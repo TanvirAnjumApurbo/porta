@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TripActionButtons } from "@/components/requests/trip-action-buttons";
+import { StarRatingInline } from "@/components/reviews/star-rating";
+import Link from "next/link";
 
 interface TripCardProps {
     post: any; // Type flexibility for now
@@ -175,14 +177,38 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
 
                     {/* Footer: User Info */}
                     <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${isOwnPost ? 'bg-primary/20 text-primary' : 'bg-zinc-700 text-zinc-300'}`}>
-                                {isOwnPost ? 'ME' : (post.travelerName || 'A').charAt(0)}
+                        {isOwnPost ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] bg-primary/20 text-primary">
+                                    ME
+                                </div>
+                                <span className="text-xs text-primary font-medium">My Trip</span>
                             </div>
-                            <span className={`text-xs ${isOwnPost ? 'text-primary font-medium' : 'text-zinc-400'}`}>
-                                {isOwnPost ? 'My Trip' : post.travelerName || 'Anonymous'}
-                            </span>
-                        </div>
+                        ) : (
+                            <Link 
+                                href={`/profile/${post.userId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                            >
+                                <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center bg-zinc-700 text-zinc-300">
+                                    {post.travelerImage ? (
+                                        <img src={post.travelerImage} alt={post.travelerName} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-[10px]">{(post.travelerName || 'A').charAt(0)}</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <span className="text-xs text-zinc-400 block">
+                                        {post.travelerName || 'Anonymous'}
+                                    </span>
+                                    <StarRatingInline 
+                                        rating={post.travelerRating || 0} 
+                                        totalReviews={post.travelerReviews}
+                                        size="sm"
+                                    />
+                                </div>
+                            </Link>
+                        )}
                         {!isOwnPost && (
                             <div className="z-10">
                                 <TripActionButtons
@@ -302,15 +328,34 @@ export function TripCard({ post, isOwnPost }: TripCardProps) {
 
                 {/* Fixed Footer */}
                 <div className="shrink-0 pt-4 border-t border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${isOwnPost ? 'bg-primary/20 text-primary' : 'bg-zinc-700 text-zinc-300'}`}>
-                            {isOwnPost ? 'ME' : (post.travelerName || 'A').charAt(0)}
+                    {isOwnPost ? (
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs bg-primary/20 text-primary">
+                                ME
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white">My Trip</p>
+                                <p className="text-xs text-zinc-500">Traveler</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-sm font-bold text-white">{post.travelerName || 'Anonymous'}</p>
-                            <p className="text-xs text-zinc-500">Traveler</p>
-                        </div>
-                    </div>
+                    ) : (
+                        <Link 
+                            href={`/profile/${post.userId}`}
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        >
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs bg-zinc-700 text-zinc-300">
+                                {(post.travelerName || 'A').charAt(0)}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white">{post.travelerName || 'Anonymous'}</p>
+                                <StarRatingInline 
+                                    rating={post.travelerRating || 0} 
+                                    totalReviews={post.travelerReviews}
+                                    size="sm"
+                                />
+                            </div>
+                        </Link>
+                    )}
 
                     {!isOwnPost && (
                         <TripActionButtons

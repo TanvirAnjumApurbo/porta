@@ -1,4 +1,4 @@
-import { ChatProvider } from "@/components/chat/chat-provider";
+import { ChatUIWrapper } from "@/components/chat/chat-ui-wrapper";
 import { Navbar } from "@/components/navbar";
 import "@/app/stream-chat.css";
 
@@ -10,11 +10,11 @@ export default function MessagesLayout({
     return (
         <main className="min-h-screen bg-[var(--background)]">
             <Navbar />
-            <ChatProvider>
+            <ChatUIWrapper>
                 <div className="pt-16 h-screen">
                     {children}
                 </div>
-            </ChatProvider>
+            </ChatUIWrapper>
         </main>
     );
 }

@@ -3,9 +3,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { deliveryRequests, travelPosts, users, notifications, activityLogs, transactions } from "@/lib/db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, or, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { StreamChat } from "stream-chat";
+import { sendProductPurchasedEmail, sendDeliveryOTPEmail } from "@/lib/email";
 
 // Create a fresh Stream Chat Server Client for each action
 function getStreamClient() {
@@ -24,7 +25,7 @@ async function createNotification({
     relatedRequestId,
 }: {
     userId: string;
-    type: "REQUEST_RECEIVED" | "REQUEST_ACCEPTED" | "REQUEST_REJECTED" | "PAYMENT_RECEIVED" | "DELIVERY_STARTED" | "DELIVERY_MARKED" | "DELIVERY_CONFIRMED" | "PAYMENT_RELEASED" | "NEW_MESSAGE";
+    type: "REQUEST_RECEIVED" | "REQUEST_ACCEPTED" | "REQUEST_REJECTED" | "PAYMENT_RECEIVED" | "DELIVERY_STARTED" | "DELIVERY_MARKED" | "DELIVERY_CONFIRMED" | "PAYMENT_RELEASED" | "NEW_MESSAGE" | "PRODUCT_PURCHASED" | "OTP_GENERATED";
     title: string;
     message: string;
     relatedRequestId?: string;
@@ -46,7 +47,7 @@ async function logActivity({
     metadata,
 }: {
     deliveryRequestId: string;
-    action: "REQUEST_SENT" | "REQUEST_ACCEPTED" | "REQUEST_REJECTED" | "PAYMENT_MADE" | "DELIVERY_STARTED" | "DELIVERY_MARKED" | "DELIVERY_CONFIRMED" | "PAYMENT_RELEASED" | "REQUEST_CANCELLED";
+    action: "REQUEST_SENT" | "REQUEST_ACCEPTED" | "REQUEST_REJECTED" | "PAYMENT_MADE" | "DELIVERY_STARTED" | "DELIVERY_MARKED" | "DELIVERY_CONFIRMED" | "PAYMENT_RELEASED" | "REQUEST_CANCELLED" | "PRODUCT_PURCHASED" | "OTP_GENERATED";
     performedBy: string;
     metadata?: Record<string, any>;
 }) {
@@ -93,6 +94,25 @@ export async function createDeliveryRequest({
     const remainingWeight = post.remainingWeight || 0;
     if (offeredWeight > remainingWeight) {
         return { success: false, error: `Requested weight exceeds available capacity (${(remainingWeight / 1000).toFixed(1)}kg)` };
+    }
+
+    // Check time: reject if arrival is within 1 hour
+    if (post.arrivalTime) {
+        try {
+            let arrivalDateTime: Date;
+            if (post.arrivalTime.includes('T')) {
+                arrivalDateTime = new Date(post.arrivalTime);
+            } else {
+                const dateStr = post.arrivalDate || post.travelDate;
+                arrivalDateTime = new Date(`${dateStr}T${post.arrivalTime}:00`);
+            }
+            const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+            if (!isNaN(arrivalDateTime.getTime()) && arrivalDateTime <= oneHourFromNow) {
+                return { success: false, error: "This trip is no longer accepting requests (departing soon)" };
+            }
+        } catch (e) {
+            // If parsing fails, allow the request
+        }
     }
 
     // 2. Check for existing active request
@@ -182,11 +202,19 @@ export async function getIncomingRequests() {
     const { userId } = await auth();
     if (!userId) return [];
 
-    // Requests SENT TO me (as traveler) - only REQUESTED status
+    // Requests SENT TO me (as traveler) - Include active states
     const requests = await db.query.deliveryRequests.findMany({
         where: and(
             eq(deliveryRequests.travellerId, userId),
-            eq(deliveryRequests.status, "REQUESTED")
+            inArray(deliveryRequests.status, [
+                "REQUESTED", 
+                "ACCEPTED", 
+                "PAID", 
+                "PURCHASED",
+                "IN_TRANSIT", 
+                "DELIVERED", 
+                "CONFIRMED"
+            ])
         ),
         with: {
             travelPost: true,
@@ -361,9 +389,13 @@ export async function getOrCreateChatChannel({
 }
 
 // ============================================
-// PAYMENT (DEMO)
+// PAYMENT (STRIPE INTEGRATION)
 // ============================================
 
+import { capturePayment } from "@/lib/stripe";
+
+// Legacy processPayment - now redirects to Stripe
+// This function is kept for backwards compatibility but will redirect to checkout
 export async function processPayment(requestId: string) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -371,7 +403,7 @@ export async function processPayment(requestId: string) {
     const request = await db.query.deliveryRequests.findFirst({
         where: eq(deliveryRequests.id, requestId),
         with: {
-            travelPost: true,
+            traveller: true,
         }
     });
 
@@ -379,80 +411,76 @@ export async function processPayment(requestId: string) {
     if (request.customerId !== userId) return { success: false, error: "Unauthorized" };
     if (request.status !== "ACCEPTED") return { success: false, error: "Request must be accepted before payment" };
 
-    // Deduct weight from travel post
-    const post = request.travelPost;
-    if (post) {
-        const currentRemaining = post.remainingWeight || 0;
-        const newRemaining = Math.max(0, currentRemaining - request.offeredWeight);
-        const newStatus = newRemaining <= 0 ? "LOCKED" : post.postStatus;
-
-        await db.update(travelPosts)
-            .set({
-                remainingWeight: newRemaining,
-                postStatus: newStatus,
-                updatedAt: new Date(),
-            })
-            .where(eq(travelPosts.id, post.id));
+    // Check if traveler has completed Stripe Connect onboarding
+    const traveler = request.traveller;
+    if (!traveler?.stripeConnectAccountId || !traveler?.stripeConnectOnboardingComplete) {
+        return { 
+            success: false, 
+            error: "The traveler has not set up payment receiving yet. Please wait or contact them.",
+            code: "TRAVELER_NOT_SETUP"
+        };
     }
 
-    // Create transaction record (DEMO - simulating payment)
-    await db.insert(transactions).values({
-        deliveryRequestId: requestId,
-        amount: request.offeredPrice,
-        currency: request.currency,
-        status: "HELD",
-        paidAt: new Date(),
+    // Return the checkout URL for redirect
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    return { 
+        success: true, 
+        redirectToStripe: true,
+        checkoutUrl: `/api/stripe/checkout`,
+        requestId,
+    };
+}
+
+// Create chat channel after successful payment (called from webhook or success page)
+export async function createDeliveryChatChannel(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
     });
 
-    // Update request status
-    await db
-        .update(deliveryRequests)
-        .set({ status: "PAID", updatedAt: new Date() })
-        .where(eq(deliveryRequests.id, requestId));
+    if (!request) return { success: false, error: "Request not found" };
+    
+    // Verify user is part of this request
+    if (request.customerId !== userId && request.travellerId !== userId) {
+        return { success: false, error: "Unauthorized" };
+    }
 
-    // Create notification for traveler
-    await createNotification({
-        userId: request.travellerId,
-        type: "PAYMENT_RECEIVED",
-        title: "Payment Secured!",
-        message: `$${(request.offeredPrice / 100).toFixed(2)} has been secured in escrow. You'll receive it after delivery confirmation.`,
-        relatedRequestId: requestId,
-    });
+    // Only create channel if request is paid
+    if (!["PAID", "PURCHASED", "IN_TRANSIT", "DELIVERED", "CONFIRMED", "COMPLETED"].includes(request.status)) {
+        return { success: false, error: "Payment must be completed first" };
+    }
 
-    // Log activity
-    await logActivity({
-        deliveryRequestId: requestId,
-        action: "PAYMENT_MADE",
-        performedBy: userId,
-        metadata: { amount: request.offeredPrice, currency: request.currency },
-    });
-
-    // Create chat channel now that payment is made
     const serverClient = getStreamClient();
     const channelId = `delivery_${requestId}`;
     
     await serverClient.upsertUsers([
-        { id: userId },
+        { id: request.customerId },
         { id: request.travellerId }
     ]);
 
     const channel = serverClient.channel("messaging", channelId, {
         created_by_id: request.travellerId,
-        members: [userId, request.travellerId],
+        members: [request.customerId, request.travellerId],
         travel_post_id: request.travelPostId,
         delivery_request_id: requestId,
     } as any);
 
     await channel.create();
 
-    await channel.sendMessage({
-        text: `💰 Payment of $${(request.offeredPrice / 100).toFixed(2)} has been secured. The delivery is now confirmed!`,
-        user: { id: "system" },
-        type: "system",
-    });
+    // Only send system message if it's a new channel
+    try {
+        await channel.sendMessage({
+            text: `💰 Payment has been secured in escrow. The delivery is now confirmed!`,
+            user: { id: "system" },
+            type: "system",
+        });
+    } catch (e) {
+        // Channel message already exists, ignore
+    }
 
     revalidatePath("/requests");
-    revalidatePath("/travelers");
     return { success: true, channelId };
 }
 
@@ -467,6 +495,16 @@ export async function releasePayment(requestId: string) {
     if (!transaction) return { success: false, error: "Transaction not found" };
     if (transaction.status !== "HELD") return { success: false, error: "Payment is not in escrow" };
 
+    // Capture the payment via Stripe if we have a payment intent
+    if (transaction.stripePaymentIntentId) {
+        try {
+            await capturePayment(transaction.stripePaymentIntentId);
+        } catch (error) {
+            console.error("Failed to capture payment:", error);
+            return { success: false, error: "Failed to release payment" };
+        }
+    }
+
     // Update transaction
     await db.update(transactions)
         .set({ 
@@ -476,12 +514,81 @@ export async function releasePayment(requestId: string) {
         })
         .where(eq(transactions.id, transaction.id));
 
-    return { success: true };
+    return { success: true, travelerPayout: transaction.travelerPayout };
 }
 
 // ============================================
 // DELIVERY MANAGEMENT
 // ============================================
+
+export async function markProductPurchased(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+        with: {
+            customer: true
+        }
+    });
+
+    if (!request) return { success: false, error: "Request not found" };
+    if (request.travellerId !== userId) return { success: false, error: "Only the traveler can mark product as purchased" };
+    if (request.status !== "PAID") return { success: false, error: "Payment must be completed first" };
+
+    // Update status
+    await db.update(deliveryRequests)
+        .set({ status: "PURCHASED", updatedAt: new Date() })
+        .where(eq(deliveryRequests.id, requestId));
+
+    // Notification
+    await createNotification({
+        userId: request.customerId,
+        type: "PRODUCT_PURCHASED",
+        title: "Product Purchased!",
+        message: "The traveler has purchased your item.",
+        relatedRequestId: requestId,
+    });
+
+    // Log activity
+    await logActivity({
+        deliveryRequestId: requestId,
+        action: "PRODUCT_PURCHASED",
+        performedBy: userId,
+    });
+
+    // Send Email
+    if (request.customer?.email) {
+        const traveler = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+            columns: { firstName: true, lastName: true },
+        });
+        const travelerName = traveler ? `${traveler.firstName || ''} ${traveler.lastName || ''}`.trim() || 'Traveler' : 'Traveler';
+        const customerName = `${request.customer.firstName || ''} ${request.customer.lastName || ''}`.trim() || 'Customer';
+
+        const emailResult = await sendProductPurchasedEmail(
+            request.customer.email,
+            customerName,
+            travelerName,
+            request.packageDescription,
+            requestId
+        );
+        console.log("Email send result:", JSON.stringify(emailResult, null, 2));
+    }
+
+    // Send message to chat
+    const serverClient = getStreamClient();
+    const channelId = `delivery_${requestId}`;
+    const channel = serverClient.channel("messaging", channelId);
+
+    await channel.sendMessage({
+        text: "🛍️ I have purchased the item!",
+        user: { id: userId }, 
+    });
+
+    revalidatePath("/requests");
+    return { success: true };
+}
 
 export async function startDelivery(requestId: string) {
     const { userId } = await auth();
@@ -493,7 +600,8 @@ export async function startDelivery(requestId: string) {
 
     if (!request) return { success: false, error: "Request not found" };
     if (request.travellerId !== userId) return { success: false, error: "Only the traveler can start delivery" };
-    if (request.status !== "PAID") return { success: false, error: "Payment must be completed first" };
+    // Allow starting delivery from PAID or PURCHASED status
+    if (request.status !== "PAID" && request.status !== "PURCHASED") return { success: false, error: "Payment must be completed first" };
 
     // Update status
     await db.update(deliveryRequests)
@@ -542,9 +650,9 @@ export async function markDelivered(requestId: string) {
 
     if (!request) return { success: false, error: "Request not found" };
     if (request.travellerId !== userId) return { success: false, error: "Only the traveler can mark as delivered" };
-    // Allow marking delivered from PAID status directly (simplified flow - no IN_TRANSIT step)
-    if (request.status !== "PAID" && request.status !== "IN_TRANSIT") {
-        return { success: false, error: "Payment must be completed first" };
+    // Allow marking delivered from PAID, PURCHASED, or IN_TRANSIT status
+    if (["PAID", "PURCHASED", "IN_TRANSIT"].indexOf(request.status) === -1) {
+        return { success: false, error: "Invalid status for delivery" };
     }
 
     // Update status directly to DELIVERED
@@ -674,4 +782,130 @@ export async function getRequestActivityLogs(requestId: string) {
     });
 
     return logs;
+}
+
+// ============================================
+// OTP VERIFICATION
+// ============================================
+
+export async function generateDeliveryOTP(requestId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+        with: {
+            customer: true,
+            traveller: true,
+        }
+    });
+
+    if (!request) return { success: false, error: "Request not found" };
+    if (request.travellerId !== userId) return { success: false, error: "Only traveler can generate OTP" };
+    
+    // Allow generating OTP if purchased or in transit
+    if (request.status !== "PURCHASED" && request.status !== "IN_TRANSIT" && request.status !== "PAID") {
+         return { success: false, error: "Must be in purchased or transit phase" };
+    }
+
+    // Generate 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save to DB
+    await db.update(deliveryRequests)
+        .set({ deliveryProofOtp: otp, updatedAt: new Date() })
+        .where(eq(deliveryRequests.id, requestId));
+
+    // Send email to customer
+    const customerName = `${request.customer.firstName || ''} ${request.customer.lastName || ''}`.trim() || 'Customer';
+    
+    await sendDeliveryOTPEmail(
+        request.customer.email,
+        customerName,
+        otp,
+        requestId
+    );
+
+    await createNotification({
+        userId: request.customerId,
+        type: "OTP_GENERATED",
+        title: "Delivery Code",
+        message: `Your delivery confirmation code is ${otp}. Share this with the traveler ONLY when you receive the item.`,
+        relatedRequestId: requestId,
+    });
+
+    await logActivity({
+        deliveryRequestId: requestId,
+        action: "OTP_GENERATED",
+        performedBy: userId,
+        metadata: { otp: "******" } // Don't log actual OTP
+    });
+
+    revalidatePath("/requests");
+    return { success: true };
+}
+
+export async function verifyDeliveryOTP(requestId: string, otp: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+        with: {
+            transaction: true,
+            customer: true, // Need to notify customer
+        }
+    });
+
+    if (!request) return { success: false, error: "Request not found" };
+    if (request.travellerId !== userId) return { success: false, error: "Only traveler can verify OTP" };
+    
+    if (!request.deliveryProofOtp) return { success: false, error: "No OTP generated for this request" };
+    
+    if (request.deliveryProofOtp !== otp) {
+        return { success: false, error: "Invalid OTP Code" };
+    }
+
+    // 1. Update Request Status to COMPLETED
+    await db.update(deliveryRequests)
+        .set({ 
+            status: "COMPLETED", 
+            deliveryProofOtp: null, 
+            updatedAt: new Date() 
+        })
+        .where(eq(deliveryRequests.id, requestId));
+
+    // 2. Release Funds - Query transaction directly to ensure we find it
+    const transaction = await db.query.transactions.findFirst({
+        where: eq(transactions.deliveryRequestId, requestId),
+    });
+    
+    if (transaction) {
+        await db.update(transactions)
+            .set({ 
+                status: "RELEASED", 
+                releasedAt: new Date(),
+                updatedAt: new Date()
+            })
+            .where(eq(transactions.id, transaction.id));
+    }
+
+    // 3. Log and Notify
+    await createNotification({
+        userId: request.customerId,
+        type: "DELIVERY_CONFIRMED",
+        title: "Delivery Completed",
+        message: "Delivery verified via OTP. Payment released.",
+        relatedRequestId: requestId,
+    });
+
+    await logActivity({
+        deliveryRequestId: requestId,
+        action: "DELIVERY_CONFIRMED",
+        performedBy: userId,
+        metadata: { method: "otp" }
+    });
+
+    revalidatePath("/requests");
+    return { success: true };
 }

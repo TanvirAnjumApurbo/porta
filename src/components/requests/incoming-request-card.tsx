@@ -42,6 +42,7 @@ interface IncomingRequestCardProps {
         customer: {
             firstName?: string | null;
             lastName?: string | null;
+            userPhotoUrl?: string | null;
         } | null;
     };
     onUpdate: () => void;
@@ -98,8 +99,12 @@ export function IncomingRequestCard({ request, onUpdate }: IncomingRequestCardPr
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="w-5 h-5 text-primary" />
+                        <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
+                            {request.customer?.userPhotoUrl ? (
+                                <img src={request.customer.userPhotoUrl} alt="Customer" className="w-full h-full object-cover" />
+                            ) : (
+                                <User className="w-5 h-5 text-primary" />
+                            )}
                         </div>
                         <div>
                             <h3 className="font-semibold text-zinc-100">{customerName}</h3>

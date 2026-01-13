@@ -12,7 +12,8 @@ import {
   LogOut,
   Plane,
   Menu,
-  X
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/verifications", label: "Verifications", icon: ShieldCheck },
+  { href: "/admin/issues", label: "Issue Reports", icon: AlertTriangle },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

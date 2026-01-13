@@ -5,7 +5,16 @@
 
 const BASE_URL = "https://countriesnow.space/api/v0.1/countries";
 
+// In-memory caches for faster repeated requests
+let countriesCache: any[] | null = null;
+const statesCache = new Map<string, any[]>();
+
 export async function getAllCountries() {
+  // Return cached data if available
+  if (countriesCache) {
+    return { success: true, data: countriesCache };
+  }
+  
   try {
     // This endpoint returns countries with their ISO2/ISO3 codes
     const res = await fetch(`${BASE_URL}/iso`, { 
@@ -13,6 +22,7 @@ export async function getAllCountries() {
     });
     const json = await res.json();
     if (!json.error && json.data) {
+        countriesCache = json.data; // Store in memory
         return { success: true, data: json.data };
     }
     return { success: false, error: json.msg || "Failed to fetch countries" };
@@ -23,6 +33,11 @@ export async function getAllCountries() {
 }
 
 export async function getStates(countryName: string) {
+  // Check cache first
+  if (statesCache.has(countryName)) {
+    return { success: true, data: statesCache.get(countryName)! };
+  }
+  
   try {
     const res = await fetch(`${BASE_URL}/states`, {
       method: "POST",
@@ -32,6 +47,7 @@ export async function getStates(countryName: string) {
     });
     const json = await res.json();
     if (!json.error && json.data && json.data.states) {
+        statesCache.set(countryName, json.data.states); // Store in memory
         return { success: true, data: json.data.states }; // Returns array of { name, state_code }
     }
     return { success: false, error: "Failed to fetch states" };
